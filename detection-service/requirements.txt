@@ -1,0 +1,5 @@
+opencv-python
+easyocr
+requests
+numpy
+Pillow
