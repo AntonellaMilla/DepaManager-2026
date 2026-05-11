@@ -73,6 +73,69 @@ const vehiculosRepository = {
       where: { id },
       data: { activo: !vehiculo.activo }
     });
+  },
+
+  /**
+   * Buscar vehículo por ID incluyendo edificio asociado
+   */
+  async findById(id) {
+    return await prisma.vehiculo.findUnique({
+      where: { id },
+      include: {
+        inquilino: {
+          include: {
+            unidad: {
+              include: {
+                edificio: true
+              }
+            }
+          }
+        }
+      }
+    });
+  },
+
+  /**
+   * Buscar vehículo por placa para evitar duplicados
+   */
+  async findByPlaca(placa) {
+    return await prisma.vehiculo.findFirst({
+      where: { placa: placa.toUpperCase() }
+    });
+  },
+
+  /**
+   * Listar vehículos de un inquilino dentro del edificio del administrador
+   */
+  async findByInquilino(inquilinoId, edificioId) {
+    return await prisma.vehiculo.findMany({
+      where: {
+        inquilinoId,
+        inquilino: {
+          unidad: {
+            edificioId
+          }
+        }
+      },
+      include: {
+        inquilino: {
+          include: {
+            usuario: {
+              select: { nombres: true, apellidos: true, email: true }
+            }
+          }
+        }
+      }
+    });
+  },
+
+  /**
+   * Eliminar vehículo permanentemente
+   */
+  async delete(id) {
+    return await prisma.vehiculo.delete({
+      where: { id }
+    });
   }
 };
 

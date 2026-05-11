@@ -36,7 +36,8 @@ const usuariosRepository = {
       where: { id },
       include: {
         rol: true,
-        administradores: true
+        administradores: true,
+        edificios: true
       }
     });
   },

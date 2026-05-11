@@ -36,7 +36,6 @@ async function main() {
   console.log('✅ Planes insertados');
 
   console.log('🎉 Seed completado exitosamente!');
-}
 
 main()
   .catch((e) => {
@@ -46,3 +45,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+};

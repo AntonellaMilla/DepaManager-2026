@@ -5,6 +5,7 @@ const usuariosRepository = require('../../modules/usuarios/usuarios.repository')
  * Middleware de autenticación JWT mejorado
  * Carga el usuario + edificios si es administrador
  */
+
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -28,11 +29,19 @@ const authMiddleware = async (req, res, next) => {
       rol: usuario.rol.nombre
     };
 
-    // Si es administrador, cargamos los IDs de sus edificios
+    // === ADMINISTRADOR ===
     if (usuario.rol.nombre === 'ADMINISTRADOR' && usuario.administradores?.length > 0) {
-      req.user.edificiosIds = usuario.administradores
-        .filter(admin => admin.activo)
-        .map(admin => admin.edificioId);
+      const adminsActivos = usuario.administradores.filter(admin => admin.activo);
+      req.user.edificiosIds = adminsActivos.map(admin => admin.edificioId);
+      if (adminsActivos.length > 0) {
+        req.user.edificioId = adminsActivos[0].edificioId;
+      }
+    }
+
+    // === PROPIETARIO ===
+    if (usuario.rol.nombre === 'PROPIETARIO' && usuario.edificios?.length > 0) {
+      req.user.edificiosIds = usuario.edificios.map(edificio => edificio.id);
+      req.user.edificioId = usuario.edificios[0].id;
     }
 
     next();

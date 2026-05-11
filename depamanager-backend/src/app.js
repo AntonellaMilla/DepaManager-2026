@@ -12,6 +12,13 @@ const inquilinosRoutes = require('./modules/inquilinos/inquilinos.routes');
 const vehiculosRoutes = require('./modules/vehiculos/vehiculos.routes');
 const camarasRoutes = require('./modules/camaras/camaras.routes');
 const accesosRoutes = require('./modules/accesos/accesos.routes');
+const imagenesRoutes = require('./modules/imagenes/imagenes.routes');
+const dashboardsRoutes = require('./modules/dashboards/dashboards.routes');
+const notificacionesRoutes = require('./modules/notificaciones/notificaciones.routes');
+const pagosRoutes = require('./modules/pagos/pagos.routes');
+const reportesRoutes = require('./modules/reportes/reportes.routes');
+const metricasRoutes = require('./modules/metricas/metricas.routes');
+const backupRoutes = require('./modules/backup/backup.routes');
 
 const app = express();
 
@@ -31,6 +38,13 @@ app.use('/api/inquilinos', inquilinosRoutes);
 app.use('/api/vehiculos', vehiculosRoutes);
 app.use('/api/camaras', camarasRoutes);
 app.use('/api/accesos', accesosRoutes);
+app.use('/api/imagenes', imagenesRoutes);
+app.use('/api/dashboard', dashboardsRoutes);
+app.use('/api/notificaciones', notificacionesRoutes);
+app.use('/api/pagos', pagosRoutes);
+app.use('/api/reportes', reportesRoutes);
+app.use('/api/metricas', metricasRoutes);
+app.use('/api/backup', backupRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

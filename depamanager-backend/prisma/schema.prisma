@@ -130,9 +130,11 @@ model Edificio {
   administradores Administrador[]
   unidades      Unidad[]
   camaras       Camara[]
+  imagenes      Imagen[]
   historial     HistorialAcceso[]
   alertas       Alerta[]
   auditorias    Auditoria[]
+  facturas      Factura[]
 
   @@map("edificios")
 }
@@ -150,6 +152,23 @@ model Suscripcion {
   plan     Plan     @relation(fields: [planId], references: [id])
 
   @@map("suscripciones")
+}
+
+model Factura {
+  id            String    @id @default(uuid())
+  edificioId    String
+  descripcion   String
+  monto         Decimal
+  fechaCreacion DateTime  @default(now())
+  fechaVencimiento DateTime
+  fechaPago     DateTime?
+  estado        String
+  codigoPago    String    @unique
+  metodoPago    String?
+
+  edificio Edificio @relation(fields: [edificioId], references: [id])
+
+  @@map("facturas")
 }
 
 model Administrador {
@@ -228,8 +247,26 @@ model Camara {
 
   edificio  Edificio         @relation(fields: [edificioId], references: [id])
   historial HistorialAcceso[]
+  imagenes  Imagen[]
 
   @@map("camaras")
+}
+
+model Imagen {
+  id            String   @id @default(uuid())
+  camaraId      String
+  edificioId    String
+  nombreArchivo String
+  rutaArchivo   String
+  tipo          String   // 'placa', 'alerta', 'comportamiento'
+  descripcion   String?
+  tamanoBytes   Int
+  fechaSubida   DateTime @default(now())
+
+  camara   Camara   @relation(fields: [camaraId], references: [id])
+  edificio Edificio @relation(fields: [edificioId], references: [id])
+
+  @@map("imagenes")
 }
 
 model HistorialAcceso {
@@ -307,6 +344,8 @@ model Notificacion {
   tipo          String
   titulo        String
   mensaje       String
+  url           String?
+  metadatos     Json?
   leida         Boolean  @default(false)
   fechaCreacion DateTime @default(now())
 

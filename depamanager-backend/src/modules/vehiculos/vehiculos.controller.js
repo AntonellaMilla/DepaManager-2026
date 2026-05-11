@@ -64,6 +64,32 @@ const vehiculosController = {
   },
 
   /**
+   * Listar vehículos de un inquilino específico
+   */
+  async listarPorInquilino(req, res) {
+    try {
+      const { inquilinoId } = req.params;
+      const vehiculos = await vehiculosService.listarVehiculosPorInquilino(inquilinoId, req.user.edificioId);
+      return success(res, vehiculos, 'Vehículos del inquilino listados correctamente');
+    } catch (err) {
+      return error(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Eliminar vehículo permanentemente
+   */
+  async delete(req, res) {
+    try {
+      const { id } = req.params;
+      const vehiculo = await vehiculosService.deleteVehiculo(id, req.user.edificioId, req.user.id);
+      return success(res, vehiculo, 'Vehículo eliminado correctamente');
+    } catch (err) {
+      return error(res, err.message, 400);
+    }
+  },
+
+  /**
    * Activar / Desactivar vehículo
    */
   async toggleActivo(req, res) {
