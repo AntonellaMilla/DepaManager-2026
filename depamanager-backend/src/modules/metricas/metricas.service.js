@@ -132,18 +132,17 @@ const metricasService = {
   },
 
   /**
-   * Obtener métricas financieras por edificio
+   * Métricas financieras por edificio — solo boletas de suscripción ya pagadas.
    */
   async obtenerMetricasFinancieras(edificioId) {
     try {
       const fechaHace12Meses = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 
-      // Ingresos mensuales
       const ingresosMensuales = await prisma.$queryRaw`
         SELECT
           DATE_TRUNC('month', "fechaPago") as mes,
           SUM("monto") as ingresos
-        FROM "Factura"
+        FROM "facturas"
         WHERE "edificioId" = ${edificioId}
           AND "estado" = 'PAGADA'
           AND "fechaPago" >= ${fechaHace12Meses}
@@ -151,70 +150,20 @@ const metricasService = {
         ORDER BY mes
       `;
 
-      // Facturas pendientes por antigüedad
-      const facturasPendientes = await prisma.factura.findMany({
-        where: {
-          edificioId,
-          estado: 'PENDIENTE'
-        },
-        select: {
-          monto: true,
-          fechaVencimiento: true,
-          fechaCreacion: true
-        }
-      });
-
-      // Calcular antigüedad de deudas
-      const ahora = new Date();
-      const deudasPorAntiguedad = {
-        '0-30_dias': 0,
-        '31-60_dias': 0,
-        '61-90_dias': 0,
-        'mas_90_dias': 0
-      };
-
-      let totalDeudas = 0;
-
-      facturasPendientes.forEach(factura => {
-        const diasVencida = Math.floor((ahora - new Date(factura.fechaVencimiento)) / (1000 * 60 * 60 * 24));
-        totalDeudas += factura.monto;
-
-        if (diasVencida <= 0) {
-          // No vencida aún
-        } else if (diasVencida <= 30) {
-          deudasPorAntiguedad['0-30_dias'] += factura.monto;
-        } else if (diasVencida <= 60) {
-          deudasPorAntiguedad['31-60_dias'] += factura.monto;
-        } else if (diasVencida <= 90) {
-          deudasPorAntiguedad['61-90_dias'] += factura.monto;
-        } else {
-          deudasPorAntiguedad['mas_90_dias'] += factura.monto;
-        }
-      });
-
-      // Tasa de cobro mensual
-      const totalFacturasMes = await prisma.factura.count({
-        where: {
-          edificioId,
-          fechaCreacion: { gte: fechaHace12Meses }
-        }
-      });
-
-      const facturasPagadasMes = await prisma.factura.count({
+      const resumen = await prisma.factura.aggregate({
         where: {
           edificioId,
           estado: 'PAGADA',
-          fechaCreacion: { gte: fechaHace12Meses }
-        }
+          fechaPago: { gte: fechaHace12Meses }
+        },
+        _sum: { monto: true },
+        _count: { id: true }
       });
-
-      const tasaCobro = totalFacturasMes > 0 ? (facturasPagadasMes / totalFacturasMes * 100).toFixed(1) : 0;
 
       return {
         ingresosMensuales,
-        deudasPorAntiguedad,
-        totalDeudas,
-        tasaCobro: parseFloat(tasaCobro),
+        totalBoletas: resumen._count.id,
+        ingresosTotales: resumen._sum.monto || 0,
         periodo: 'últimos 12 meses'
       };
 

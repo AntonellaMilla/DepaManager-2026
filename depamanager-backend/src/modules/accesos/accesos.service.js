@@ -190,7 +190,10 @@ const accesosService = {
     };
   },
 
-  async obtenerHistorial(usuario, filtros = {}) {
+  /**
+   * @param {object} limiteHistorial - Límite por plan desde planValidation.validarHistorial
+   */
+  async obtenerHistorial(usuario, filtros = {}, limiteHistorial = null) {
     const where = {};
 
     if (filtros.desde || filtros.hasta) {
@@ -201,6 +204,15 @@ const accesosService = {
       if (filtros.hasta) {
         where.fechaEvento.lte = new Date(filtros.hasta);
       }
+    }
+
+    // Ventana máxima de historial según plan del edificio (7 / 180 / 365 días)
+    if (limiteHistorial?.fechaMinima) {
+      if (!where.fechaEvento) where.fechaEvento = {};
+      const solicitado = where.fechaEvento.gte;
+      where.fechaEvento.gte = solicitado && solicitado > limiteHistorial.fechaMinima
+        ? solicitado
+        : limiteHistorial.fechaMinima;
     }
 
     if (filtros.tipo) {

@@ -1,4 +1,5 @@
 const prisma = require("../../shared/config/database");
+const suscripcionUtil = require('../../shared/utils/suscripcion.util');
 
 /**
  * Notificaciones Service - Sistema de recordatorios y alertas
@@ -25,6 +26,29 @@ const notificacionesService = {
     } catch (error) {
       console.error('Error creando notificación:', error);
       throw new Error('Error al crear notificación');
+    }
+  },
+
+  /**
+   * Notifica solo a administradores activos del edificio (no al propietario).
+   */
+  async notificarAdministradoresEdificio(edificioId, tipo, titulo, mensaje, url = null, metadatos = null) {
+    try {
+      const administradores = await prisma.administrador.findMany({
+        where: { edificioId, activo: true },
+        select: { usuarioId: true }
+      });
+
+      const notificaciones = await Promise.all(
+        administradores.map((admin) =>
+          this.crearNotificacion(admin.usuarioId, tipo, titulo, mensaje, url, metadatos)
+        )
+      );
+
+      return notificaciones;
+    } catch (error) {
+      console.error('Error notificando administradores:', error);
+      throw new Error('Error al notificar administradores del edificio');
     }
   },
 
@@ -125,12 +149,140 @@ const notificacionesService = {
   },
 
   /**
-   * Generar recordatorios de pagos pendientes
-   * Se ejecuta periódicamente (diario)
+   * Evita spam: ¿ya hubo notificación de este tipo en las últimas N horas?
    */
-  async generarRecordatoriosPagos() {
+  async _existeNotificacionReciente(usuarioId, tipo, horas = 24) {
+    const reciente = await prisma.notificacion.findFirst({
+      where: {
+        usuarioId,
+        tipo,
+        fechaCreacion: {
+          gte: new Date(Date.now() - horas * 60 * 60 * 1000)
+        }
+      }
+    });
+    return !!reciente;
+  },
+
+  /**
+   * Recordatorios de suscripción mensual al PROPIETARIO (como alquiler/contrato del inquilino).
+   * - 3 días antes del vencimiento (fechaFin)
+   * - Durante mora (hasta 3 días de gracia tras vencimiento)
+   * - Degradación automática si supera la gracia
+   * Ejecutar diariamente vía POST /api/notificaciones/mantenimiento
+   */
+  async generarRecordatoriosSuscripcionPropietario() {
     try {
-      console.log('🔄 Generando recordatorios de pagos...');
+      console.log('🔄 Recordatorios de suscripción a propietarios...');
+
+      const suscripciones = await prisma.suscripcion.findMany({
+        where: { activa: true },
+        include: {
+          plan: true,
+          edificio: {
+            select: {
+              id: true,
+              nombre: true,
+              propietarioId: true,
+              activo: true
+            }
+          }
+        }
+      });
+
+      let avisosPrevios = 0;
+      let avisosMora = 0;
+      let degradaciones = 0;
+
+      for (const sub of suscripciones) {
+        if (!sub.edificio?.activo) continue;
+        if (!suscripcionUtil.requierePagoMensual(sub.plan.nombre)) continue;
+
+        const propietarioId = sub.edificio.propietarioId;
+        const diasGracia = sub.diasGracia ?? suscripcionUtil.DIAS_GRACIA_SUSCRIPCION;
+        const diasRestantes = suscripcionUtil.diasHasta(sub.fechaFin);
+        const fechaVenceStr = new Date(sub.fechaFin).toLocaleDateString('es-PE');
+
+        // 3 días antes del vencimiento
+        if (diasRestantes === suscripcionUtil.DIAS_AVISO_PREVIO) {
+          const ya = await this._existeNotificacionReciente(
+            propietarioId,
+            'RECORDATORIO_SUSCRIPCION',
+            48
+          );
+          if (!ya) {
+            await this.crearNotificacion(
+              propietarioId,
+              'RECORDATORIO_SUSCRIPCION',
+              '💳 Recordatorio: pago de suscripción',
+              `Tu suscripción ${sub.plan.nombre} del edificio ${sub.edificio.nombre} vence el ${fechaVenceStr} ` +
+                `(en ${diasRestantes} días). Renueva para mantener todas las funciones.`,
+              `/edificios`,
+              { edificioId: sub.edificio.id, diasRestantes }
+            );
+            avisosPrevios++;
+
+            // Aviso opcional a administradores 3 días antes del vencimiento
+            // Esto permite que el admin empuje al propietario a renovar
+            await this.notificarAdministradoresEdificio(
+              sub.edificio.id,
+              'AVISO_VENCIMIENTO_ADMIN',
+              '⏰ Aviso: Suscripción del edificio por vencer',
+              `La suscripción ${sub.plan.nombre} del edificio ${sub.edificio.nombre} vence en ${diasRestantes} días. ` +
+                `Considera recordar al propietario que renueve para evitar interrupciones del servicio.`,
+              `/edificios`,
+              { edificioId: sub.edificio.id, diasRestantes, plan: sub.plan.nombre }
+            );
+          }
+        }
+
+        // En mora (vencido pero dentro de gracia)
+        if (diasRestantes < 0) {
+          const diasRetraso = Math.abs(diasRestantes);
+
+          if (diasRetraso <= diasGracia) {
+            const ya = await this._existeNotificacionReciente(
+              propietarioId,
+              'RECORDATORIO_SUSCRIPCION_MORA',
+              24
+            );
+            if (!ya) {
+              await this.crearNotificacion(
+                propietarioId,
+                'RECORDATORIO_SUSCRIPCION_MORA',
+                '⚠️ Suscripción vencida — período de gracia',
+                `El pago de ${sub.plan.nombre} para ${sub.edificio.nombre} venció hace ${diasRetraso} día(s). ` +
+                  `Tienes ${diasGracia - diasRetraso} día(s) de gracia antes de perder el plan.`,
+                `/edificios`,
+                { edificioId: sub.edificio.id, diasRetraso, diasGracia }
+              );
+              avisosMora++;
+            }
+          } else if (diasRetraso > diasGracia) {
+            // require diferido para evitar dependencia circular con pagos.service
+            const pagosService = require('../pagos/pagos.service');
+            await pagosService.aplicarDegradacionPorImpago(sub.edificio.id);
+            degradaciones++;
+          }
+        }
+      }
+
+      console.log(
+        `✅ Suscripción: ${avisosPrevios} avisos previos, ${avisosMora} en mora, ${degradaciones} degradaciones`
+      );
+      return { avisosPrevios, avisosMora, degradaciones };
+    } catch (error) {
+      console.error('Error en recordatorios de suscripción:', error);
+      throw new Error('Error al generar recordatorios de suscripción');
+    }
+  },
+
+  /**
+   * Recordatorios de contratos de inquilinos (no es pago SaaS del edificio).
+   */
+  async generarRecordatoriosContratos() {
+    try {
+      console.log('🔄 Generando recordatorios de contratos...');
 
       // Buscar inquilinos con contratos próximos a vencer (30 días)
       const contratosPorVencer = await prisma.inquilino.findMany({
@@ -335,19 +487,25 @@ const notificacionesService = {
     try {
       console.log('🔄 Ejecutando mantenimiento de notificaciones...');
 
-      const resultados = await Promise.all([
-        this.generarRecordatoriosPagos(),
-        this.generarRecordatoriosAlquiler(),
-        this.notificarSolicitudesPendientes()
-      ]);
+      const suscripcion = await this.generarRecordatoriosSuscripcionPropietario();
+      const contratos = await this.generarRecordatoriosContratos();
+      const alquiler = await this.generarRecordatoriosAlquiler();
+      const solicitudes = await this.notificarSolicitudesPendientes();
 
-      const total = resultados.reduce((sum, count) => sum + count, 0);
+      const total =
+        suscripcion.avisosPrevios +
+        suscripcion.avisosMora +
+        suscripcion.degradaciones +
+        contratos +
+        alquiler +
+        solicitudes;
 
-      console.log(`✅ Mantenimiento completado: ${total} notificaciones generadas`);
+      console.log(`✅ Mantenimiento completado: ${total} acciones/notificaciones`);
       return {
-        recordatoriosContratos: resultados[0],
-        recordatoriosAlquiler: resultados[1],
-        notificacionesSolicitudes: resultados[2],
+        suscripcionPropietario: suscripcion,
+        recordatoriosContratos: contratos,
+        recordatoriosAlquiler: alquiler,
+        notificacionesSolicitudes: solicitudes,
         total
       };
 

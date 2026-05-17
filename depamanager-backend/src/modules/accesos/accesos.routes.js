@@ -6,8 +6,12 @@ const planValidation = require('../../shared/middlewares/planValidation.middlewa
 
 const router = express.Router();
 
-// Historial de accesos para inquilinos, administradores y propietarios
-router.get('/', authMiddleware, accesosController.obtenerHistorial);
+// Historial de accesos — ventana limitada según plan del edificio
+router.get('/',
+  authMiddleware,
+  planValidation.validarHistorial,
+  accesosController.obtenerHistorial
+);
 
 router.post('/registrar',
   serviceAuthMiddleware,

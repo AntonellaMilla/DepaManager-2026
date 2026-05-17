@@ -2,6 +2,7 @@ const express = require('express');
 const metricasController = require("./metricas.controller");
 const authMiddleware = require('../../shared/middlewares/auth.middleware');
 const { roleGuard } = require('../../shared/middlewares/roles.middleware');
+const planValidation = require('../../shared/middlewares/planValidation.middleware');
 
 const router = express.Router();
 
@@ -14,19 +15,22 @@ router.get('/generales',
   metricasController.obtenerMetricasGenerales
 );
 
-// Obtener métricas de seguridad por edificio
+// Métricas básicas — disponibles en todos los planes con suscripción activa
 router.get('/seguridad/:edificioId', metricasController.obtenerMetricasSeguridad);
-
-// Obtener métricas financieras por edificio
-router.get('/financieras/:edificioId', metricasController.obtenerMetricasFinancieras);
-
-// Obtener métricas de ocupación por edificio
 router.get('/ocupacion/:edificioId', metricasController.obtenerMetricasOcupacion);
 
-// Obtener métricas IA por edificio
-router.get('/ia/:edificioId', metricasController.obtenerMetricasIA);
-
-// Obtener métricas completas por edificio
-router.get('/completas/:edificioId', metricasController.obtenerMetricasCompletas);
+// Métricas avanzadas — solo plan Premium (permiteMetricasAvanzadas)
+router.get('/financieras/:edificioId',
+  planValidation.validarMetricasAvanzadas,
+  metricasController.obtenerMetricasFinancieras
+);
+router.get('/ia/:edificioId',
+  planValidation.validarMetricasAvanzadas,
+  metricasController.obtenerMetricasIA
+);
+router.get('/completas/:edificioId',
+  planValidation.validarMetricasAvanzadas,
+  metricasController.obtenerMetricasCompletas
+);
 
 module.exports = router;

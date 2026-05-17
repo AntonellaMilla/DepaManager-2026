@@ -1,4 +1,5 @@
 const prisma = require("../../shared/config/database");
+const suscripcionUtil = require('../../shared/utils/suscripcion.util');
 
 /**
  * Edificios Repository - Respeta todos los campos de tu tabla edificios
@@ -23,7 +24,8 @@ const edificiosRepository = {
           create: {
             planId: planGratuitoId,
             fechaInicio: new Date(),
-            fechaFin: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 año
+            fechaFin: suscripcionUtil.calcularProximoVencimiento(),
+            diasGracia: suscripcionUtil.DIAS_GRACIA_SUSCRIPCION,
             activa: true
           }
         }
@@ -72,31 +74,6 @@ const edificiosRepository = {
             usuario: true
           }
         }
-      }
-    });
-  },
-
-    /**
-   * Cambiar el plan de un edificio (upgrade)
-   */
-  async upgradePlan(edificioId, nuevoPlanId, propietarioId) {
-    // Verificar que el edificio pertenece al propietario
-    const edificio = await this.findById(edificioId);
-    if (!edificio || edificio.propietarioId !== propietarioId) {
-      throw new Error('No tienes permiso para modificar este edificio');
-    }
-
-    // Actualizar la suscripción
-    return await prisma.suscripcion.update({
-      where: { edificioId },
-      data: {
-        planId: nuevoPlanId,
-        fechaFin: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // +1 año
-        activa: true
-      },
-      include: {
-        plan: true,
-        edificio: true
       }
     });
   },

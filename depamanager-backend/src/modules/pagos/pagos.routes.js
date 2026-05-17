@@ -5,37 +5,28 @@ const { roleGuard } = require('../../shared/middlewares/roles.middleware');
 
 const router = express.Router();
 
-// Todas las rutas requieren autenticación
 router.use(authMiddleware);
+router.use(roleGuard(['PROPIETARIO']));
 
-// Crear factura (solo propietario/administrador)
-router.post('/facturas',
-  roleGuard(['PROPIETARIO', 'ADMINISTRADOR']),
-  pagosController.crearFactura
-);
+/**
+ * Upgrade de plan: POST /api/edificios/upgrade-plan
+ * Renovación mensual: rutas abajo o upgrade-plan con operacion: 'RENOVACION'
+ */
 
-// Crear factura mensual automática (solo propietario/administrador)
-router.post('/facturas/mensual',
-  roleGuard(['PROPIETARIO', 'ADMINISTRADOR']),
-  pagosController.crearFacturaMensual
-);
+router.get('/upgrade/sesion', pagosController.consultarSesion);
+router.get('/suscripcion/:edificioId', pagosController.estadoSuscripcion);
 
-// Obtener facturas de un edificio
-router.get('/facturas/:edificioId', pagosController.obtenerFacturas);
+router.post('/renovacion/iniciar', pagosController.iniciarRenovacion);
+router.post('/renovacion/confirmar', pagosController.confirmarRenovacion);
 
-// Marcar factura como pagada (solo propietario/administrador)
-router.put('/facturas/:id/pagar',
-  roleGuard(['PROPIETARIO', 'ADMINISTRADOR']),
-  pagosController.pagarFactura
-);
+// Descargar PDF antes que /boletas/:edificioId para no confundir rutas
+router.get('/boletas/comprobante/:boletaId/descargar', pagosController.descargarBoleta);
+router.get('/boletas/:edificioId', pagosController.obtenerBoletas);
 
-// Generar QR para pago con Yape
-router.get('/facturas/:id/qr', pagosController.generarQR);
-
-// Obtener estadísticas de pagos
 router.get('/estadisticas/:edificioId', pagosController.obtenerEstadisticas);
 
-// Verificar pago por código Yape
-router.post('/verificar', pagosController.verificarPago);
+// Ruta de mantenimiento para actualizar registros viejos de suscripciones
+// POST /api/pagos/mantenimiento/actualizar-registros-viejos
+router.post('/mantenimiento/actualizar-registros-viejos', pagosController.actualizarRegistrosViejos);
 
 module.exports = router;

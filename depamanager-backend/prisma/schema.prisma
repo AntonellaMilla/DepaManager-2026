@@ -145,7 +145,7 @@ model Suscripcion {
   planId      String
   fechaInicio DateTime
   fechaFin    DateTime
-  diasGracia  Int      @default(2)
+  diasGracia  Int      @default(3) // Días extra tras fechaFin antes de degradar a Gratuito
   activa      Boolean  @default(true)
 
   edificio Edificio @relation(fields: [edificioId], references: [id])
@@ -154,17 +154,19 @@ model Suscripcion {
   @@map("suscripciones")
 }
 
+// Boleta/comprobante emitido tras confirmar pago de suscripción del edificio.
+// Siempre se crea con estado PAGADA (no hay facturas pendientes ni cobro manual).
 model Factura {
-  id            String    @id @default(uuid())
-  edificioId    String
-  descripcion   String
-  monto         Decimal
-  fechaCreacion DateTime  @default(now())
-  fechaVencimiento DateTime
-  fechaPago     DateTime?
-  estado        String
-  codigoPago    String    @unique
-  metodoPago    String?
+  id               String   @id @default(uuid())
+  edificioId       String
+  descripcion      String
+  monto            Decimal
+  fechaCreacion    DateTime @default(now())
+  fechaVencimiento DateTime // Referencia del período; en boletas coincide con el pago
+  fechaPago        DateTime? // Siempre presente en boletas nuevas; opcional por compatibilidad con registros antiguos
+  estado           String   // Siempre "PAGADA" en el flujo actual
+  codigoPago       String   @unique
+  metodoPago       String?
 
   edificio Edificio @relation(fields: [edificioId], references: [id])
 

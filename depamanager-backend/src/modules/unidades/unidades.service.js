@@ -1,5 +1,6 @@
 const unidadesRepository = require("./unidades.repository");
 const auditoriaRepository = require("../accesos/auditoria.repository");
+const planLimitsUtil = require("../../shared/utils/planLimits.util");
 
 /**
  * Unidades Service - Soporta creación individual y por rango
@@ -14,6 +15,10 @@ const unidadesService = {
     if (!edificioId) {
       throw new Error('El ID del edificio es obligatorio');
     }
+
+    // Validar tope de unidades según plan SaaS del edificio (maxUnidades en tabla Plan)
+    const cantidadNueva = Array.isArray(data) ? data.length : 1;
+    await planLimitsUtil.validarCreacionUnidades(edificioId, cantidadNueva);
 
     const unidadesCreadas = [];
 

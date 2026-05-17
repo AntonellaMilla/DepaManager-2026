@@ -94,14 +94,38 @@ const edificiosController = {
     }
   },
 
-    /**
-   * Upgrade de plan de un edificio
+  /**
+   * Upgrade de plan de un edificio (con pago)
+   *
+   * Body sin tokenPago → inicia pago (devuelve tokenPago, codigoPago, QR).
+   * Body con tokenPago → confirma pago, emite boleta y activa el plan.
    */
   async upgradePlan(req, res) {
     try {
-      const { edificioId, nuevoPlan } = req.body; // nuevoPlan = "ESTANDAR" o "PREMIUM"
-      const resultado = await edificiosService.upgradePlan(edificioId, nuevoPlan, req.user.id);
-      return success(res, resultado, 'Plan actualizado correctamente');
+      const { edificioId, nuevoPlan, plan, tokenPago, operacion } = req.body;
+      const nombrePlan = (nuevoPlan || plan)?.toUpperCase();
+      const op = (operacion || 'UPGRADE').toUpperCase();
+
+      if (!edificioId) {
+        return error(res, 'edificioId es requerido', 400);
+      }
+      if (!tokenPago && op === 'UPGRADE' && !nombrePlan) {
+        return error(res, 'plan/nuevoPlan es requerido para upgrade', 400);
+      }
+
+      const resultado = await edificiosService.upgradePlan(
+        edificioId,
+        nombrePlan,
+        req.user.id,
+        tokenPago || null,
+        op
+      );
+
+      const mensaje = tokenPago
+        ? 'Pago confirmado, boleta emitida y plan activado'
+        : 'Sesión de pago iniciada. Confirma con tokenPago tras pagar.';
+
+      return success(res, resultado, mensaje);
     } catch (err) {
       return error(res, err.message, 400);
     }
@@ -141,6 +165,40 @@ const edificiosController = {
       const { id } = req.params;
       const historial = await edificiosService.verHistorialActividades(id, req.user.id);
       return success(res, historial, 'Historial de actividades obtenido');
+    } catch (err) {
+      return error(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Ver accesos de un edificio específico (filtrado por edificio)
+   * Similar a accesosGlobales pero para un solo edificio
+   */
+  async accesosPorEdificio(req, res) {
+    try {
+      const { id } = req.params;
+      const filtros = {
+        desde: req.query.desde,
+        hasta: req.query.hasta,
+        tipo: req.query.tipo,
+        resultado: req.query.resultado
+      };
+      const accesos = await edificiosService.verAccesosPorEdificio(id, req.user.id, filtros);
+      return success(res, accesos, 'Accesos del edificio obtenidos');
+    } catch (err) {
+      return error(res, err.message, 400);
+    }
+  },
+
+  /**
+   * Ver alertas de un edificio específico (filtrado por edificio)
+   * Similar a alertasGlobales pero para un solo edificio
+   */
+  async alertasPorEdificio(req, res) {
+    try {
+      const { id } = req.params;
+      const alertas = await edificiosService.verAlertasPorEdificio(id, req.user.id);
+      return success(res, alertas, 'Alertas del edificio obtenidas');
     } catch (err) {
       return error(res, err.message, 400);
     }

@@ -3,6 +3,7 @@ const administradoresRepository = require("./administradores.repository");
 const usuariosRepository = require("../usuarios/usuarios.repository");
 const auditoriaRepository = require("../accesos/auditoria.repository");
 const planesRepository = require("./planes.repository");
+const pagosService = require("../pagos/pagos.service");
 
 /**
  * Edificios Service - Solo para rol PROPIETARIO
@@ -67,29 +68,22 @@ const edificiosService = {
 
     return await auditoriaRepository.findAlertasByEdificios(edificioIds);
   },
-    /**
-   * Upgrade de plan (simula pago y confirmación)
-   * Por ahora el pago es simulado (en producción se integraría con Stripe/PayU)
+  /**
+   * Pago de suscripción mensual — delegado a pagos.service.
+   * Sin tokenPago: inicia checkout. Con tokenPago: confirma, boleta PDF y extiende vencimiento +1 mes.
+   * operacion: UPGRADE (cambio de plan) | RENOVACION (mismo plan).
    */
-  async upgradePlan(edificioId, nuevoPlanNombre, propietarioId) {
-    const planNuevo = await planesRepository.findByName(nuevoPlanNombre);
+  async upgradePlan(edificioId, nuevoPlanNombre, propietarioId, tokenPago = null, operacion = 'UPGRADE') {
+    if (tokenPago) {
+      return await pagosService.confirmarPagoSuscripcion(tokenPago, propietarioId);
+    }
 
-    if (!planNuevo) throw new Error('Plan no encontrado');
+    if (operacion === 'RENOVACION') {
+      return await pagosService.iniciarRenovacionMensual(edificioId, propietarioId);
+    }
 
-    // Simulación de pago (en fase de prueba)
-    console.log(`💳 Simulando pago para upgrade a ${nuevoPlanNombre}...`);
-
-    const suscripcionActualizada = await edificiosRepository.upgradePlan(
-      edificioId,
-      planNuevo.id,
-      propietarioId
-    );
-
-    return {
-      mensaje: `Plan actualizado a ${nuevoPlanNombre} correctamente`,
-      suscripcion: suscripcionActualizada,
-      nota: 'Pago simulado y confirmado (fase de prueba)'
-    };
+    const planNormalizado = nuevoPlanNombre?.toUpperCase();
+    return await pagosService.iniciarUpgradePlan(edificioId, planNormalizado, propietarioId);
   },
 
     async updateEdificio(id, data, propietarioId) {
@@ -110,6 +104,32 @@ const edificiosService = {
     }
 
     return await auditoriaRepository.findByEdificio(edificioId);
+  },
+
+  /**
+   * Ver accesos de un edificio específico (filtrado por edificio)
+   * Similar a verAccesosGlobales pero para un solo edificio
+   */
+  async verAccesosPorEdificio(edificioId, propietarioId, filtros = {}) {
+    const edificio = await edificiosRepository.findById(edificioId);
+    if (!edificio || edificio.propietarioId !== propietarioId) {
+      throw new Error('No tienes permiso para ver este edificio');
+    }
+
+    return await auditoriaRepository.findAccesosByEdificios([edificioId]);
+  },
+
+  /**
+   * Ver alertas de un edificio específico (filtrado por edificio)
+   * Similar a verAlertasGlobales pero para un solo edificio
+   */
+  async verAlertasPorEdificio(edificioId, propietarioId) {
+    const edificio = await edificiosRepository.findById(edificioId);
+    if (!edificio || edificio.propietarioId !== propietarioId) {
+      throw new Error('No tienes permiso para ver este edificio');
+    }
+
+    return await auditoriaRepository.findAlertasByEdificios([edificioId]);
   }
 };
 

@@ -2,160 +2,115 @@ const pagosService = require("./pagos.service");
 const { success, error } = require("../../shared/utils/response");
 
 /**
- * Pagos Controller - Gestión de pagos con Yape
+ * Pagos Controller — Suscripción mensual, boletas y estado.
  */
 const pagosController = {
 
-  /**
-   * POST /api/pagos/facturas
-   * Crear nueva factura
-   */
-  async crearFactura(req, res) {
+  async consultarSesion(req, res) {
     try {
-      const { edificioId, descripcion, monto, fechaVencimiento } = req.body;
-
-      // Validaciones
-      if (!edificioId || !descripcion || !monto || !fechaVencimiento) {
-        return error(res, 'Todos los campos son requeridos', 400);
+      const { tokenPago } = req.query;
+      if (!tokenPago) {
+        return error(res, 'tokenPago es requerido', 400);
       }
-
-      if (monto <= 0) {
-        return error(res, 'El monto debe ser mayor a 0', 400);
-      }
-
-      const factura = await pagosService.crearFactura(edificioId, descripcion, monto, fechaVencimiento);
-
-      return success(res, factura, 'Factura creada correctamente', 201);
+      const sesion = pagosService.consultarSesionPago(tokenPago);
+      return success(res, sesion, 'Estado de sesión de pago');
     } catch (err) {
-      console.error('Error creando factura:', err);
-      return error(res, err.message, 500);
+      return error(res, err.message, 400);
     }
   },
 
-  /**
-   * GET /api/pagos/facturas/:edificioId
-   * Obtener facturas de un edificio
-   */
-  async obtenerFacturas(req, res) {
+  /** POST /api/pagos/renovacion/iniciar — renovación del plan actual */
+  async iniciarRenovacion(req, res) {
     try {
-      const edificioId = req.params.edificioId;
-      const filtros = req.query;
-
-      const facturas = await pagosService.obtenerFacturasEdificio(edificioId, filtros);
-
-      return success(res, facturas, 'Facturas obtenidas correctamente');
-    } catch (err) {
-      console.error('Error obteniendo facturas:', err);
-      return error(res, err.message, 500);
-    }
-  },
-
-  /**
-   * PUT /api/pagos/facturas/:id/pagar
-   * Marcar factura como pagada
-   */
-  async pagarFactura(req, res) {
-    try {
-      const facturaId = req.params.id;
-      const { metodoPago } = req.body;
-
-      const factura = await pagosService.marcarFacturaPagada(facturaId, metodoPago || 'YAPE');
-
-      return success(res, factura, 'Factura pagada correctamente');
-    } catch (err) {
-      console.error('Error pagando factura:', err);
-      return error(res, err.message, 500);
-    }
-  },
-
-  /**
-   * GET /api/pagos/facturas/:id/qr
-   * Generar QR para pago con Yape
-   */
-  async generarQR(req, res) {
-    try {
-      const facturaId = req.params.id;
-
-      // Obtener factura
-      const { PrismaClient } = require('@prisma/client');
-      const prisma = new PrismaClient();
-
-      const factura = await prisma.factura.findUnique({
-        where: { id: facturaId }
-      });
-
-      if (!factura) {
-        return error(res, 'Factura no encontrada', 404);
+      const { edificioId } = req.body;
+      if (!edificioId) {
+        return error(res, 'edificioId es requerido', 400);
       }
-
-      if (factura.estado === 'PAGADA') {
-        return error(res, 'La factura ya está pagada', 400);
-      }
-
-      const qrData = pagosService.generarQRParaYape(factura);
-
-      return success(res, qrData, 'QR generado correctamente');
+      const sesion = await pagosService.iniciarRenovacionMensual(edificioId, req.user.id);
+      return success(res, sesion, 'Sesión de renovación iniciada');
     } catch (err) {
-      console.error('Error generando QR:', err);
-      return error(res, err.message, 500);
+      return error(res, err.message, 400);
     }
   },
 
-  /**
-   * GET /api/pagos/estadisticas/:edificioId
-   * Obtener estadísticas de pagos
-   */
+  /** POST /api/pagos/renovacion/confirmar */
+  async confirmarRenovacion(req, res) {
+    try {
+      const { tokenPago } = req.body;
+      if (!tokenPago) {
+        return error(res, 'tokenPago es requerido', 400);
+      }
+      const resultado = await pagosService.confirmarPagoSuscripcion(tokenPago, req.user.id);
+      return success(res, resultado, 'Renovación confirmada');
+    } catch (err) {
+      return error(res, err.message, 400);
+    }
+  },
+
+  /** GET /api/pagos/suscripcion/:edificioId — vencimiento, gracia, plan */
+  async estadoSuscripcion(req, res) {
+    try {
+      const estado = await pagosService.obtenerEstadoSuscripcion(
+        req.params.edificioId,
+        req.user.id
+      );
+      return success(res, estado, 'Estado de suscripción');
+    } catch (err) {
+      return error(res, err.message, 403);
+    }
+  },
+
+  async obtenerBoletas(req, res) {
+    try {
+      const boletas = await pagosService.obtenerBoletasEdificio(
+        req.params.edificioId,
+        req.user.id,
+        req.query
+      );
+      return success(res, boletas, 'Boletas obtenidas correctamente');
+    } catch (err) {
+      return error(res, err.message, 403);
+    }
+  },
+
+  /** GET /api/pagos/boletas/comprobante/:boletaId/descargar — PDF */
+  async descargarBoleta(req, res) {
+    try {
+      const { boletaId } = req.params;
+      const pdf = await pagosService.descargarBoletaPDF(boletaId, req.user.id);
+
+      res.setHeader('Content-Type', pdf.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${pdf.filename}"`);
+      return res.send(pdf.buffer);
+    } catch (err) {
+      console.error('Error descargando boleta:', err);
+      return error(res, err.message, 403);
+    }
+  },
+
   async obtenerEstadisticas(req, res) {
     try {
-      const edificioId = req.params.edificioId;
-
-      const estadisticas = await pagosService.obtenerEstadisticasPagos(edificioId);
-
+      const estadisticas = await pagosService.obtenerEstadisticasPagos(
+        req.params.edificioId,
+        req.user.id
+      );
       return success(res, estadisticas, 'Estadísticas obtenidas correctamente');
     } catch (err) {
-      console.error('Error obteniendo estadísticas:', err);
-      return error(res, err.message, 500);
+      return error(res, err.message, 403);
     }
   },
 
   /**
-   * POST /api/pagos/verificar
-   * Verificar pago por código Yape
+   * Actualizar registros viejos de suscripciones (solo admin/superadmin)
+   * POST /api/pagos/mantenimiento/actualizar-registros-viejos
    */
-  async verificarPago(req, res) {
+  async actualizarRegistrosViejos(req, res) {
     try {
-      const { codigoPago } = req.body;
-
-      if (!codigoPago) {
-        return error(res, 'Código de pago requerido', 400);
-      }
-
-      const resultado = await pagosService.verificarPagoYape(codigoPago);
-
-      return success(res, resultado, 'Verificación completada');
+      // Verificar que sea admin o superadmin (opcional, según requerimientos)
+      // Por ahora, cualquier usuario autenticado puede ejecutarlo
+      const resultado = await pagosService.actualizarRegistrosViejosSuscripciones();
+      return success(res, resultado, 'Registros viejos actualizados correctamente');
     } catch (err) {
-      console.error('Error verificando pago:', err);
-      return error(res, err.message, 500);
-    }
-  },
-
-  /**
-   * POST /api/pagos/facturas/mensual
-   * Crear factura mensual automática
-   */
-  async crearFacturaMensual(req, res) {
-    try {
-      const { edificioId, mes, anio, montoBase } = req.body;
-
-      if (!edificioId || !mes || !anio || !montoBase) {
-        return error(res, 'Todos los campos son requeridos', 400);
-      }
-
-      const factura = await pagosService.crearFacturaMensual(edificioId, mes, anio, montoBase);
-
-      return success(res, factura, 'Factura mensual creada correctamente', 201);
-    } catch (err) {
-      console.error('Error creando factura mensual:', err);
       return error(res, err.message, 500);
     }
   }

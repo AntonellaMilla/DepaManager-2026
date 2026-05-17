@@ -56,7 +56,11 @@ const accesosController = {
         edificioId: req.query.edificioId
       };
 
-      const historial = await accesosService.obtenerHistorial(req.user, filtros);
+      const historial = await accesosService.obtenerHistorial(
+        req.user,
+        filtros,
+        req.limiteHistorial
+      );
       return success(res, historial, 'Historial de accesos obtenido correctamente');
     } catch (err) {
       console.error('Error obteniendo historial de accesos:', err);

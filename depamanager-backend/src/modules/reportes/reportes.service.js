@@ -126,33 +126,26 @@ const reportesService = {
         throw new Error('Edificio no encontrado');
       }
 
-      // Obtener facturas
-      const facturas = await prisma.factura.findMany({
+      // Solo boletas emitidas tras pago confirmado de suscripción
+      const boletas = await prisma.factura.findMany({
         where: {
           edificioId,
-          fechaCreacion: {
+          estado: 'PAGADA',
+          fechaPago: {
             gte: new Date(fechaDesde),
             lte: new Date(fechaHasta)
           }
         },
-        orderBy: { fechaCreacion: 'desc' }
+        orderBy: { fechaPago: 'desc' }
       });
 
-      // Estadísticas financieras
-      const totalFacturas = facturas.length;
-      const facturasPagadas = facturas.filter(f => f.estado === 'PAGADA');
-      const facturasPendientes = facturas.filter(f => f.estado === 'PENDIENTE');
-      const ingresosTotales = facturasPagadas.reduce((sum, f) => sum + f.monto, 0);
-      const deudasPendientes = facturasPendientes.reduce((sum, f) => sum + f.monto, 0);
+      const ingresosTotales = boletas.reduce((sum, b) => sum + Number(b.monto), 0);
 
-      const html = this.generarHTMLReporteFinanciero(edificio, facturas, {
+      const html = this.generarHTMLReporteFinanciero(edificio, boletas, {
         fechaDesde,
         fechaHasta,
-        totalFacturas,
-        facturasPagadas: facturasPagadas.length,
-        facturasPendientes: facturasPendientes.length,
-        ingresosTotales,
-        deudasPendientes
+        totalBoletas: boletas.length,
+        ingresosTotales
       });
 
       return await this.generarPDF(html, `reporte-financiero-${edificio.nombre}-${fechaDesde}-${fechaHasta}.pdf`);
@@ -311,7 +304,7 @@ const reportesService = {
   /**
    * Generar HTML para reporte financiero
    */
-  generarHTMLReporteFinanciero(edificio, facturas, stats) {
+  generarHTMLReporteFinanciero(edificio, boletas, stats) {
     return `
       <!DOCTYPE html>
       <html>
@@ -324,7 +317,6 @@ const reportesService = {
           .stats { display: flex; justify-content: space-around; margin: 20px 0; }
           .stat-box { background: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; }
           .income { background: #d4edda; }
-          .debt { background: #f8d7da; }
           table { width: 100%; border-collapse: collapse; margin-top: 20px; }
           th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
           th { background-color: #f2f2f2; }
@@ -333,48 +325,42 @@ const reportesService = {
       </head>
       <body>
         <div class="header">
-          <h1>Reporte Financiero</h1>
+          <h1>Reporte de Boletas — Suscripción DepaManager</h1>
           <h2>${edificio.nombre}</h2>
           <p>Propietario: ${edificio.propietario.nombres} ${edificio.propietario.apellidos}</p>
-          <p>Plan: ${edificio.suscripcion?.plan?.nombre || 'N/A'}</p>
+          <p>Plan actual: ${edificio.suscripcion?.plan?.nombre || 'N/A'}</p>
           <p>Período: ${new Date(stats.fechaDesde).toLocaleDateString()} - ${new Date(stats.fechaHasta).toLocaleDateString()}</p>
         </div>
 
         <div class="stats">
           <div class="stat-box">
-            <h3>${stats.totalFacturas}</h3>
-            <p>Total de Facturas</p>
+            <h3>${stats.totalBoletas}</h3>
+            <p>Boletas emitidas</p>
           </div>
           <div class="stat-box income">
             <h3>S/ ${stats.ingresosTotales.toFixed(2)}</h3>
-            <p>Ingresos Totales</p>
-          </div>
-          <div class="stat-box debt">
-            <h3>S/ ${stats.deudasPendientes.toFixed(2)}</h3>
-            <p>Deudas Pendientes</p>
+            <p>Ingresos por suscripciones</p>
           </div>
         </div>
 
         <table>
           <thead>
             <tr>
-              <th>Fecha</th>
+              <th>Fecha de pago</th>
               <th>Descripción</th>
               <th>Monto</th>
-              <th>Estado</th>
-              <th>Fecha Pago</th>
-              <th>Método Pago</th>
+              <th>Código</th>
+              <th>Método</th>
             </tr>
           </thead>
           <tbody>
-            ${facturas.map(factura => `
+            ${boletas.map(boleta => `
               <tr>
-                <td>${new Date(factura.fechaCreacion).toLocaleDateString()}</td>
-                <td>${factura.descripcion}</td>
-                <td>S/ ${factura.monto.toFixed(2)}</td>
-                <td>${factura.estado}</td>
-                <td>${factura.fechaPago ? new Date(factura.fechaPago).toLocaleDateString() : 'N/A'}</td>
-                <td>${factura.metodoPago || 'N/A'}</td>
+                <td>${new Date(boleta.fechaPago).toLocaleDateString()}</td>
+                <td>${boleta.descripcion}</td>
+                <td>S/ ${Number(boleta.monto).toFixed(2)}</td>
+                <td>${boleta.codigoPago}</td>
+                <td>${boleta.metodoPago || 'N/A'}</td>
               </tr>
             `).join('')}
           </tbody>

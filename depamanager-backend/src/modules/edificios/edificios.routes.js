@@ -17,5 +17,7 @@ router.post('/upgrade-plan', edificiosController.upgradePlan);
 router.put('/:id', edificiosController.update);
 router.delete('/:id', edificiosController.delete);    
 router.get('/:id/historial', edificiosController.historialActividades);
+router.get('/:id/accesos', edificiosController.accesosPorEdificio);     // nueva - accesos por edificio específico
+router.get('/:id/alertas', edificiosController.alertasPorEdificio);     // nueva - alertas por edificio específico
 
 module.exports = router;
