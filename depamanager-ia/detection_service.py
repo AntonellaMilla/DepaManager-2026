@@ -18,6 +18,7 @@ from collections import Counter, deque
 from ultralytics import YOLO
 
 import config
+import streaming_server
 
 # ==============================
 # LOGGING
@@ -712,13 +713,20 @@ def procesar_camara(camara):
 
         # ---- UI en pantalla (todos los frames) ----
         dibujar_ui(frame, ultima_placa, nombre, mensaje_overlay)
-        cv2.imshow(nombre, frame)
-
+        
+        # ---- Enviar frame al servidor de streaming ----
+        streaming_server.update_camera_frame(cam_id, frame)
+        
+        # NOTA: cv2.imshow() eliminado para producción
+        # El stream se ve en: http://localhost:5001/stream/{cam_id}
+        
+        # Mantener cv2.waitKey() para que OpenCV procese eventos internos
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
     cap.release()
-    cv2.destroyAllWindows()
+    # cv2.destroyAllWindows() eliminado - no hay ventanas locales
+    streaming_server.remove_camera(cam_id)
 
 
 # ======================================================================
@@ -759,6 +767,12 @@ def monitorear_camaras():
 
 if __name__ == "__main__":
     logger.info("🚀 DepaManager LPR Multi-Cámara iniciado")
+    
+    # Iniciar servidor de streaming en un thread separado
+    threading.Thread(target=streaming_server.app.run, kwargs={'host': '0.0.0.0', 'port': 5001, 'threaded': True}, daemon=True).start()
+    logger.info("📡 Servidor de streaming MJPEG iniciado en puerto 5001")
+    
+    # Iniciar monitoreo de cámaras
     threading.Thread(target=monitorear_camaras, daemon=True).start()
 
     try:

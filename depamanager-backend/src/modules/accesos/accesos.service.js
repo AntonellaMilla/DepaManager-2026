@@ -25,11 +25,19 @@ const accesosService = {
     const posiblesPlacas = [placaOriginal, placaSinGuion, placaConGuion];
 
     for (const placa of posiblesPlacas) {
-      vehiculo = await prisma.vehiculo.findUnique({
-        where: { placa: placa },
+      vehiculo = await prisma.vehiculo.findFirst({
+        where: { 
+          placa: placa,
+          inquilino: {
+            unidad: {
+              edificioId: edificioId  // ✅ Filtrar por edificio
+            }
+          }
+        },
         include: {
           inquilino: {
             include: {
+              unidad: true,
               usuario: {
                 select: { nombres: true, apellidos: true, email: true }
               }
