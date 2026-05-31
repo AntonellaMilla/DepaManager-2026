@@ -144,7 +144,6 @@ const EditarEdificioPage = () => {
                 <Input
                   label="Nombre del Edificio"
                   name="nombre"
-                  placeholder="Ej: Edificio El Mirador"
                   value={formData.nombre}
                   onChange={handleChange}
                   error={errors.nombre}
@@ -154,7 +153,6 @@ const EditarEdificioPage = () => {
                 <Input
                   label="Dirección Completa"
                   name="direccion"
-                  placeholder="Ej: Calle Principal 123"
                   value={formData.direccion}
                   onChange={handleChange}
                   error={errors.direccion}
@@ -172,7 +170,6 @@ const EditarEdificioPage = () => {
                 <Input
                   label="Ciudad"
                   name="ciudad"
-                  placeholder="Ej: Lima"
                   value={formData.ciudad}
                   onChange={handleChange}
                   error={errors.ciudad}
@@ -181,7 +178,6 @@ const EditarEdificioPage = () => {
                 <Input
                   label="Provincia"
                   name="provincia"
-                  placeholder="Ej: Lima"
                   value={formData.provincia}
                   onChange={handleChange}
                   error={errors.provincia}
@@ -190,7 +186,6 @@ const EditarEdificioPage = () => {
                 <Input
                   label="Distrito"
                   name="distrito"
-                  placeholder="Ej: Miraflores"
                   value={formData.distrito}
                   onChange={handleChange}
                   error={errors.distrito}

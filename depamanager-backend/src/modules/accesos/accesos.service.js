@@ -1,5 +1,5 @@
 const prisma = require('../../shared/config/database');
-const auditoriaRepository = require("./auditoria.repository");
+const auditoriaRepository = require("../auditoria/auditoria.repository");
 const notificacionesService = require('../notificaciones/notificaciones.service');
 
 /**

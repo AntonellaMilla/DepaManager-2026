@@ -81,6 +81,34 @@ const usuariosRepository = {
   },
 
   /**
+   * Busca usuario por email con todas las relaciones necesarias para el login
+   */
+  async findByEmailWithRelations(email) {
+    return await prisma.usuario.findUnique({
+      where: { email },
+      include: {
+        rol: true,
+        administradores: {
+          where: { activo: true },
+          include: {
+            edificio: true
+          }
+        },
+        edificios: true,
+        inquilino: {
+          include: {
+            unidad: {
+              include: {
+                edificio: true
+              }
+            }
+          }
+        }
+      }
+    });
+  },
+
+  /**
    * Actualizar Admin
    */
   async update(id, data) {

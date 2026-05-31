@@ -1,5 +1,5 @@
 const camarasRepository = require('./camaras.repository');
-const auditoriaRepository = require('../accesos/auditoria.repository');
+const auditoriaRepository = require('../auditoria/auditoria.repository');
 
 /**
  * Cámaras Service

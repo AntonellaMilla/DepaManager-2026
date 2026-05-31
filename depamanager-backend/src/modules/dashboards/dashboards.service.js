@@ -5,6 +5,44 @@ const prisma = require("../../shared/config/database");
  */
 const dashboardService = {
 
+async getDashboardInquilino(usuarioId) {
+  const inquilino = await prisma.inquilino.findFirst({
+    where: { usuarioId },
+    include: {
+      unidad: true
+    }
+  });
+
+  if (!inquilino) {
+    throw new Error('Inquilino no encontrado');
+  }
+
+  const vehiculos = await prisma.vehiculo.findMany({
+    where: { inquilinoId: inquilino.id }
+  });
+
+  const accesos = await prisma.historialAcceso.findMany({
+    where: {
+      vehiculo: { inquilinoId: inquilino.id }
+    },
+    take: 10,
+    orderBy: { fechaEvento: 'desc' }
+  });
+
+  return {
+    estadisticas: {
+      vehiculos: vehiculos.length,
+      unidad: inquilino.unidad.numero
+    },
+    ultimosAccesos: accesos,
+    alertasRecientes: []
+  };
+},
+
+
+
+
+
   /**
    * Dashboard del Propietario - Vista general de todos sus edificios
    */
@@ -29,6 +67,15 @@ const dashboardService = {
         }
       });
 
+
+
+
+
+
+
+
+
+      
       const edificioIds = edificios.map(e => e.id);
 
       // Estadísticas generales
@@ -139,7 +186,7 @@ const dashboardService = {
       }
 
       // Estadísticas del edificio
-      const [estadisticas, accesosHoy, alertasPendientes, inquilinosActivos] = await Promise.all([
+      const [estadisticas, accesosHoy, alertasPendientes, inquilinosActivos, ultimoInquilino] = await Promise.all([
         // Estadísticas básicas
         Promise.all([
           prisma.unidad.count({ where: { edificioId } }),
@@ -201,31 +248,49 @@ const dashboardService = {
             unidad: { select: { numero: true } }
           },
           take: 10
-        })
+        }),
+
+      // Último inquilino creado
+        prisma.inquilino.findFirst({
+          where: {
+            unidad: { edificioId }
+          },
+          include: {
+            usuario: { select: { nombres: true, apellidos: true, email: true } },
+            unidad: { select: { numero: true, piso: true } }
+          },
+          orderBy: { createdAt: 'desc' }
+        }).catch(() => null)
       ]);
 
-      // Eventos recientes (últimas 24 horas)
-      const eventosRecientes = await prisma.historialAcceso.findMany({
-        where: {
-          edificioId,
-          fechaEvento: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
-          }
-        },
-        include: {
-          vehiculo: {
-            include: {
-              inquilino: {
-                include: {
-                  usuario: { select: { nombres: true, apellidos: true } }
+      // Eventos recientes (últimas 7 días)
+      let eventosRecientes = [];
+      try {
+        eventosRecientes = await prisma.historialAcceso.findMany({
+          where: {
+            edificioId,
+            fechaEvento: {
+              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+            }
+          },
+          include: {
+            vehiculo: {
+              include: {
+                inquilino: {
+                  include: {
+                    usuario: { select: { nombres: true, apellidos: true } }
+                  }
                 }
               }
             }
-          }
-        },
-        orderBy: { fechaEvento: 'desc' },
-        take: 20
-      });
+          },
+          orderBy: { fechaEvento: 'desc' },
+          take: 20
+        });
+      } catch (error) {
+        console.error('Error fetching eventosRecientes:', error);
+        // Continue with empty array if query fails
+      }
 
       return {
         estadisticas,
@@ -234,7 +299,8 @@ const dashboardService = {
         inquilinosActivos: inquilinosActivos.length,
         eventosRecientes,
         alertasPendientes,
-        inquilinosRecientes: inquilinosActivos
+        inquilinosRecientes: inquilinosActivos,
+        ultimoInquilino
       };
 
     } catch (error) {

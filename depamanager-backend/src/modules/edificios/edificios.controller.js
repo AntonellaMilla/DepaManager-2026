@@ -75,7 +75,7 @@ const edificiosController = {
    */
   async accesosGlobales(req, res) {
     try {
-      const accesos = await edificiosService.verAccesosGlobales(req.user.id);
+      const accesos = await edificiosService.verAccesosGlobales(req.user);
       return success(res, accesos, 'Accesos globales obtenidos');
     } catch (err) {
       return error(res, err.message);
@@ -87,7 +87,7 @@ const edificiosController = {
    */
   async alertasGlobales(req, res) {
     try {
-      const alertas = await edificiosService.verAlertasGlobales(req.user.id);
+      const alertas = await edificiosService.verAlertasGlobales(req.user);
       return success(res, alertas, 'Alertas globales obtenidas');
     } catch (err) {
       return error(res, err.message);
@@ -183,7 +183,7 @@ const edificiosController = {
         tipo: req.query.tipo,
         resultado: req.query.resultado
       };
-      const accesos = await edificiosService.verAccesosPorEdificio(id, req.user.id, filtros);
+      const accesos = await edificiosService.verAccesosPorEdificio(id, req.user, filtros);
       return success(res, accesos, 'Accesos del edificio obtenidos');
     } catch (err) {
       return error(res, err.message, 400);
@@ -197,7 +197,7 @@ const edificiosController = {
   async alertasPorEdificio(req, res) {
     try {
       const { id } = req.params;
-      const alertas = await edificiosService.verAlertasPorEdificio(id, req.user.id);
+      const alertas = await edificiosService.verAlertasPorEdificio(id, req.user);
       return success(res, alertas, 'Alertas del edificio obtenidas');
     } catch (err) {
       return error(res, err.message, 400);

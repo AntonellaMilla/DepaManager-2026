@@ -1,39 +1,42 @@
+// src/modules/administradores/components/AdministradoresPage.jsx
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Shield, Eye, Edit2, Trash2, Plus, Mail, Calendar } from 'lucide-react';
 import Layout from '../../../shared/components/layout/Layout';
 import Button from '../../../shared/components/ui/Button';
 import Table from '../../../shared/components/ui/Table';
-import Dropdown from '../../../shared/components/ui/Dropdown';
-import CrearAdministradorModal from './CrearAdministradorModal';
-import EditarAdministradorModal from './EditarAdministradorModal';
 import ConfirmDeleteModal from '../../../shared/components/ui/ConfirmDeleteModal';
+// CrearAdministradorPage se muestra via ruta /administradores/crear
 import { administradoresService } from '../services/administradoresService';
+import { useAuth } from '../../../shared/hooks/useAuth';
+import { getRoleColors } from '../../../shared/components/layout/config/menuConfig';
 import toast from 'react-hot-toast';
-import { Shield, Mail, Eye, Edit2, Trash2 } from 'lucide-react';
 
 const AdministradoresPage = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [administradores, setAdministradores] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Estados para modales
-  const [crearModal, setCrearModal] = useState(false);
-  const [editModal, setEditModal] = useState({ isOpen: false, admin: null });
-  const [deleteModal, setDeleteModal] = useState({ isOpen: false, adminId: null, adminNombre: '' });
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, nombre: '' });
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  /**
-   * Cargar lista de administradores
-   */
+  const getUserRole = () => {
+    if (!user?.rol) return null;
+    const rolValue = typeof user.rol === 'object' ? user.rol?.nombre : user.rol;
+    return rolValue?.toUpperCase() || null;
+  };
+  const userRole = getUserRole();
+  const roleColors = getRoleColors(userRole);
+
   const fetchAdministradores = async () => {
     try {
       setLoading(true);
-      const response = await administradoresService.listarAdministradores();
-      console.log('📦 Administradores cargados:', response);
-      
-      const adminsData = Array.isArray(response) ? response : response.data || [];
-      setAdministradores(adminsData);
+      const data = await administradoresService.listarAdministradores();
+      setAdministradores(data);
     } catch (error) {
       toast.error('Error al cargar los administradores');
-      console.error('❌ Error:', error);
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -43,118 +46,97 @@ const AdministradoresPage = () => {
     fetchAdministradores();
   }, []);
 
-  /**
-   * Manejar creación exitosa
-   */
-  const handleCrearExito = () => {
-    setCrearModal(false);
-    fetchAdministradores();
-    toast.success('✓ Administrador creado exitosamente');
-  };
-
-  /**
-   * Manejar edición exitosa
-   */
-  const handleEditarExito = () => {
-    setEditModal({ isOpen: false, admin: null });
-    fetchAdministradores();
-    toast.success('✓ Administrador actualizado exitosamente');
-  };
-
-  /**
-   * Manejar eliminación
-   */
-  const handleEliminar = async () => {
+  const handleDelete = async () => {
     setDeleteLoading(true);
     try {
-      await administradoresService.eliminarAdministrador(deleteModal.adminId);
-      toast.success('✓ Administrador eliminado exitosamente');
+      await administradoresService.eliminarAdministrador(deleteModal.id);
+      toast.success('Administrador eliminado correctamente');
+      setDeleteModal({ isOpen: false, id: null, nombre: '' });
       fetchAdministradores();
-      setDeleteModal({ isOpen: false, adminId: null, adminNombre: '' });
     } catch (error) {
-      const message = error.response?.data?.message || 'Error al eliminar el administrador';
-      toast.error(message);
-      console.error('❌ Error:', error);
+      toast.error('Error al eliminar el administrador');
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  /**
-   * Columnas de la tabla - Diseño elegante
-   */
   const columns = [
     {
-      header: 'Nombre',
-      accessor: (row) => `${row.nombres} ${row.apellidos}`
-    },
-    {
-      header: 'Email',
-      key: 'email'
+      header: 'Administrador',
+      key: 'nombre',
+      render: (_, row) => (
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold text-sm shadow-sm"
+            style={{ backgroundColor: roleColors.dark }}
+          >
+            {row.nombres?.charAt(0).toUpperCase()}{row.apellidos?.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="font-semibold text-gray-800">{row.nombres} {row.apellidos}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <Mail size={12} className="text-gray-400" />
+              <span className="text-xs text-gray-500">{row.email}</span>
+            </div>
+          </div>
+        </div>
+      )
     },
     {
       header: 'Teléfono',
-      accessor: (row) => row.telefono || '—'
+      key: 'telefono',
+      render: (value) => value || '-'
     },
     {
       header: 'Estado',
-      accessor: (row) => (
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-          row.activo 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-gray-100 text-gray-800'
-        }`}>
-          {row.activo ? 'Activo' : 'Inactivo'}
+      key: 'activo',
+      render: (value) => (
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${value ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${value ? 'bg-green-500' : 'bg-red-500'}`}></span>
+          {value ? 'Activo' : 'Inactivo'}
         </span>
       )
     },
     {
+      header: 'Fecha Registro',
+      key: 'fechaCreacion',
+      render: (value) => (
+        <div className="flex items-center gap-1.5">
+          <Calendar size={14} className="text-gray-400" />
+          <span className="text-sm text-gray-600">
+            {value ? new Date(value).toLocaleDateString('es-PE') : '-'}
+          </span>
+        </div>
+      )
+    },
+    {
       header: 'Acciones',
-      accessor: (row) => (
-        <div className="flex items-center gap-2">
-          {/* Botones siempre visibles */}
+      key: 'acciones',
+      align: 'center',
+      render: (_, row) => (
+        <div className="flex items-center gap-1">
           <Button
-            variant="outline"
-            size="sm"
-            icon={Edit2}
-            onClick={() => setEditModal({ isOpen: true, admin: row })}
-            className="h-8 px-2"
-          >
-            Editar
-          </Button>
-
-          <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             icon={Eye}
-            onClick={() => window.open(`mailto:${row.email}`, '_blank')}
-            className="h-8 px-2"
-          >
-            Email
-          </Button>
-
-          {/* Menú de opciones */}
-          <Dropdown
-            items={[
-              {
-                label: 'Ver Detalles',
-                icon: <Eye size={16} />,
-                onClick: () => {
-                  alert(`${row.nombres} ${row.apellidos}\n${row.email}\n${row.telefono || 'Sin teléfono'}`);
-                }
-              },
-              {
-                label: 'Eliminar',
-                icon: <Trash2 size={16} />,
-                variant: 'danger',
-                onClick: () => setDeleteModal({
-                  isOpen: true,
-                  adminId: row.id,
-                  adminNombre: `${row.nombres} ${row.apellidos}`
-                })
-              }
-            ]}
+            onClick={() => navigate(`/administradores/${row.id}`)}
+            title="Ver detalles"
+          />
+          <Button
+            variant="ghost"
             size="sm"
+            icon={Trash2}
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeleteModal({
+                isOpen: true,
+                id: row.id,
+                nombre: `${row.nombres} ${row.apellidos}`
+              });
+            }}
+            title="Eliminar"
+            className="text-red-500 hover:text-red-700 hover:bg-red-50"
           />
         </div>
       )
@@ -163,68 +145,35 @@ const AdministradoresPage = () => {
 
   return (
     <Layout>
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <Shield size={32} className="text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-800">Administradores</h1>
-          </div>
-          <p className="text-gray-600">Gestiona los administradores de tus edificios</p>
+          <h1 className="text-3xl font-bold text-gray-800">Administradores</h1>
+          <p className="text-gray-500 mt-1">Gestiona los administradores de tus edificios</p>
         </div>
-        <Button 
-          onClick={() => setCrearModal(true)}
-          className="flex items-center gap-2"
-        >
-          + Crear Administrador
+        <Button variant="primary" role={userRole} icon={Plus} onClick={() => navigate('/administradores/crear')}>
+          Nuevo Administrador
         </Button>
       </div>
 
-      {/* Tabla de administradores */}
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-gray-500">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-            <p>Cargando administradores...</p>
-          </div>
-        ) : administradores.length === 0 ? (
-          <div className="p-12 text-center">
-            <Shield size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-600 mb-4">No hay administradores registrados aún</p>
-            <Button onClick={() => setCrearModal(true)}>
-              Crear primer administrador
-            </Button>
-          </div>
-        ) : (
-          <Table 
-            columns={columns} 
-            data={administradores} 
-            isLoading={false}
-          />
-        )}
-      </div>
-
-      {/* Modales */}
-      <CrearAdministradorModal
-        isOpen={crearModal}
-        onClose={() => setCrearModal(false)}
-        onSuccess={handleCrearExito}
+      <Table
+        columns={columns}
+        data={administradores}
+        isLoading={loading}
+        title="Lista de Administradores"
+        searchable
+        onRowClick={(row) => navigate(`/administradores/${row.id}`)}
       />
 
-      <EditarAdministradorModal
-        isOpen={editModal.isOpen}
-        onClose={() => setEditModal({ isOpen: false, admin: null })}
-        admin={editModal.admin}
-        onSuccess={handleEditarExito}
-      />
+      {/* La página de creación se muestra en la ruta /administradores/crear */}
 
       <ConfirmDeleteModal
         isOpen={deleteModal.isOpen}
-        onClose={() => setDeleteModal({ isOpen: false, adminId: null, adminNombre: '' })}
-        onConfirm={handleEliminar}
+        onClose={() => setDeleteModal({ isOpen: false, id: null, nombre: '' })}
+        onConfirm={handleDelete}
         title="Eliminar Administrador"
-        message={`¿Está seguro de que desea eliminar a "${deleteModal.adminNombre}"? Esta acción no se puede deshacer.`}
+        message="¿Estás seguro de que deseas eliminar este administrador?"
+        itemName={deleteModal.nombre}
         confirmText="Eliminar"
-        cancelText="Cancelar"
         loading={deleteLoading}
       />
     </Layout>

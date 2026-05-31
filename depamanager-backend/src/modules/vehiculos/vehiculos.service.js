@@ -1,6 +1,6 @@
 const vehiculosRepository = require("./vehiculos.repository");
 const inquilinosRepository = require("../inquilinos/inquilinos.repository");
-const auditoriaRepository = require("../accesos/auditoria.repository");
+const auditoriaRepository = require("../auditoria/auditoria.repository");
 
 /**
  * Vehiculos Service
@@ -36,6 +36,28 @@ const vehiculosService = {
 
   async listarVehiculosPorInquilino(inquilinoId, edificioId) {
     return await vehiculosRepository.findByInquilino(inquilinoId, edificioId);
+  },
+
+  async obtenerVehiculo(id, edificioId, rol, usuarioId) {
+    const vehiculo = await vehiculosRepository.findById(id);
+    if (!vehiculo) {
+      throw new Error('Vehículo no encontrado');
+    }
+
+    // Verificar que el vehículo pertenezca al edificio
+    if (vehiculo.inquilino?.unidad?.edificioId !== edificioId) {
+      throw new Error('Vehículo no encontrado en este edificio');
+    }
+
+    // Si es INQUILINO, verificar que el vehículo le pertenezca
+    if (rol === 'INQUILINO') {
+      const inquilino = await inquilinosRepository.findByUsuarioId(usuarioId);
+      if (!inquilino || vehiculo.inquilinoId !== inquilino.id) {
+        throw new Error('No tienes permiso para ver este vehículo');
+      }
+    }
+
+    return vehiculo;
   },
 
   async updateVehiculo(id, data, edificioId, adminId) {

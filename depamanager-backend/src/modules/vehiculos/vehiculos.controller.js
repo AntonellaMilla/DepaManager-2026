@@ -1,4 +1,5 @@
 const vehiculosService = require("./vehiculos.service");
+const inquilinosRepository = require("../inquilinos/inquilinos.repository");
 const { success, error } = require("../../shared/utils/response");
 const { body, validationResult } = require('express-validator');
 
@@ -40,13 +41,41 @@ const vehiculosController = {
 
   /**
    * Listar todos los vehículos del edificio
+   * - ADMINISTRADOR: ve todos los vehículos de su edificio
+   * - INQUILINO: solo ve sus propios vehículos
    */
   async listar(req, res) {
     try {
-      const vehiculos = await vehiculosService.listarVehiculos(req.user.edificioId);
+      let vehiculos;
+      if (req.user.rol === 'INQUILINO') {
+        // INQUILINO: obtener su inquilinoId y luego listar sus vehículos
+        const inquilino = await inquilinosRepository.findByUsuarioId(req.user.id);
+        if (!inquilino) {
+          return error(res, 'No se encontró registro de inquilino para este usuario', 404);
+        }
+        vehiculos = await vehiculosService.listarVehiculosPorInquilino(inquilino.id, req.user.edificioId);
+      } else {
+        // ADMINISTRADOR: ver todos los vehículos del edificio
+        vehiculos = await vehiculosService.listarVehiculos(req.user.edificioId);
+      }
       return success(res, vehiculos, 'Vehículos listados correctamente');
     } catch (err) {
       return error(res, err.message);
+    }
+  },
+
+  /**
+   * Obtener un vehículo por ID
+   * - ADMINISTRADOR: puede ver cualquier vehículo de su edificio
+   * - INQUILINO: solo puede ver sus propios vehículos
+   */
+  async obtener(req, res) {
+    try {
+      const { id } = req.params;
+      const vehiculo = await vehiculosService.obtenerVehiculo(id, req.user.edificioId, req.user.rol, req.user.id);
+      return success(res, vehiculo, 'Vehículo obtenido correctamente');
+    } catch (err) {
+      return error(res, err.message, err.message.includes('no encontrado') ? 404 : 400);
     }
   },
 

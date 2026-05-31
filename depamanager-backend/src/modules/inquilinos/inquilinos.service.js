@@ -1,6 +1,7 @@
 const inquilinosRepository = require("./inquilinos.repository");
 const usuariosService = require("../usuarios/usuarios.service");
-const auditoriaRepository = require("../accesos/auditoria.repository");
+const auditoriaRepository = require("../auditoria/auditoria.repository");
+const usuariosRepository = require("../usuarios/usuarios.repository");
 
 /**
  * Inquilinos Service
@@ -38,17 +39,17 @@ const inquilinosService = {
         unidadId
       );
 
-      // 4. Registrar en auditoría
+      // 4. Registrar auditoría
       await auditoriaRepository.create(
         adminId,
         edificioId,
-        'CREAR_INQUILINO',
-        `Inquilino ${usuarioInquilino.nombres} ${usuarioInquilino.apellidos} (${usuarioInquilino.email}) creado y asignado a unidad ${unidadId}`
+        "CREAR_INQUILINO",
+        `Se registró al inquilino ${usuarioInquilino.nombres} ${usuarioInquilino.apellidos} y se le asignó una unidad`
       );
 
       return {
         usuario: usuarioInquilino,
-        inquilino: inquilino
+        inquilino
       };
     } catch (error) {
       throw error;
@@ -78,11 +79,13 @@ const inquilinosService = {
       );
 
       // Registrar auditoría
+      const usuario = await usuariosRepository.findById(usuarioId);
+
       await auditoriaRepository.create(
         adminId,
         edificioId,
-        'CREAR_INQUILINO',
-        `Inquilino con usuario ${usuarioId} asignado a unidad ${unidadId}`
+        "CREAR_INQUILINO",
+        `Se asignó al inquilino ${usuario.nombres} ${usuario.apellidos} a una unidad`
       );
 
       return inquilino;
@@ -98,11 +101,13 @@ const inquilinosService = {
     const inquilino = await inquilinosRepository.create(data, unidadId);
 
     // Registrar en auditoría
+    const usuario = await usuariosRepository.findById(data.usuarioId);
+
     await auditoriaRepository.create(
       adminId,
       edificioId,
-      'CREAR_INQUILINO',
-      `Inquilino ${data.usuarioId} asignado a unidad ${unidadId}`
+      "CREAR_INQUILINO",
+      `Se asignó al inquilino ${usuario.nombres} ${usuario.apellidos} a una unidad`
     );
 
     return inquilino;
@@ -120,12 +125,16 @@ const inquilinosService = {
    */
   async updateInquilino(id, data, edificioId, adminId) {
     const inquilino = await inquilinosRepository.update(id, data);
+
     await auditoriaRepository.create(
       adminId,
       edificioId,
-      'ACTUALIZAR_INQUILINO',
-      `Inquilino ${id} actualizado: ${JSON.stringify(data)}`
+      "ACTUALIZAR_INQUILINO",
+      inquilino?.usuario
+        ? `Se actualizó la información de ${inquilino.usuario.nombres} ${inquilino.usuario.apellidos}`
+        : `Se actualizó la información del inquilino`
     );
+
     return inquilino;
   },
 
@@ -141,12 +150,16 @@ const inquilinosService = {
    */
   async finalizarContrato(id, edificioId, adminId) {
     const inquilino = await inquilinosRepository.finalizarContrato(id);
+
     await auditoriaRepository.create(
       adminId,
       edificioId,
-      'FINALIZAR_CONTRATO',
-      `Contrato del inquilino ${id} finalizado`
+      "FINALIZAR_CONTRATO",
+      inquilino?.usuario
+        ? `Se finalizó el contrato de ${inquilino.usuario.nombres} ${inquilino.usuario.apellidos}`
+        : `Se finalizó el contrato de un inquilino`
     );
+
     return inquilino;
   }
 };

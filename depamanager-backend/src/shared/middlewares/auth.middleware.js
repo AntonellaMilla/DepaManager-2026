@@ -44,6 +44,12 @@ const authMiddleware = async (req, res, next) => {
       req.user.edificioId = usuario.edificios[0].id;
     }
 
+    // === INQUILINO ===
+    if (usuario.rol.nombre === 'INQUILINO' && usuario.inquilino?.unidad?.edificioId) {
+      req.user.edificioId = usuario.inquilino.unidad.edificioId;
+      req.user.edificiosIds = [usuario.inquilino.unidad.edificioId];
+    }
+
     next();
   } catch (err) {
     return res.status(401).json({ success: false, message: 'Token inválido o expirado' });

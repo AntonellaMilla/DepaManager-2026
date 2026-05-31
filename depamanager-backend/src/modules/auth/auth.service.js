@@ -78,6 +78,42 @@ const authService = {
     const esValido = await comparePassword(password, usuario.passwordHash);
     if (!esValido) throw new Error('Credenciales incorrectas');
 
+    // Preparar datos adicionales según el rol - solo si es necesario
+    let datosAdicionales = {};
+    
+    // Solo cargar relaciones adicionales si es ADMINISTRADOR, PROPIETARIO o INQUILINO
+    if (usuario.rol.nombre === 'ADMINISTRADOR') {
+      const usuarioConAdmins = await usuariosRepository.findById(usuario.id);
+      if (usuarioConAdmins.administradores?.length > 0) {
+        const adminsActivos = usuarioConAdmins.administradores.filter(admin => admin.activo);
+        datosAdicionales.edificiosIds = adminsActivos.map(admin => admin.edificioId);
+        if (adminsActivos.length > 0) {
+          datosAdicionales.edificioId = adminsActivos[0].edificioId;
+          // Incluir detalles del edificio si está disponible
+          if (adminsActivos[0].edificio) {
+            datosAdicionales.edificios = [adminsActivos[0].edificio];
+          }
+        }
+      }
+    } else if (usuario.rol.nombre === 'PROPIETARIO') {
+      const usuarioConEdificios = await usuariosRepository.findById(usuario.id);
+      if (usuarioConEdificios.edificios?.length > 0) {
+        datosAdicionales.edificiosIds = usuarioConEdificios.edificios.map(edificio => edificio.id);
+        datosAdicionales.edificioId = usuarioConEdificios.edificios[0].id;
+        // Incluir detalles de los edificios
+        datosAdicionales.edificios = usuarioConEdificios.edificios;
+      }
+    } else if (usuario.rol.nombre === 'INQUILINO') {
+      const inquilinosRepository = require('../inquilinos/inquilinos.repository');
+      const inquilino = await inquilinosRepository.findByUsuarioId(usuario.id);
+      if (inquilino?.unidad?.edificioId) {
+        datosAdicionales.edificioId = inquilino.unidad.edificioId;
+        datosAdicionales.edificiosIds = [inquilino.unidad.edificioId];
+        // Incluir detalles completos del inquilino con unidad
+        datosAdicionales.inquilino = inquilino;
+      }
+    }
+
     const token = generarToken({
       id: usuario.id,
       email: usuario.email,
@@ -87,7 +123,7 @@ const authService = {
     const { passwordHash: _, ...usuarioRespuesta } = usuario;
 
     return {
-      usuario: usuarioRespuesta,
+      usuario: { ...usuarioRespuesta, ...datosAdicionales },
       token
     };
   }

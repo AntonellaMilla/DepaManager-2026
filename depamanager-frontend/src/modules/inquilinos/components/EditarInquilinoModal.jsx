@@ -147,7 +147,6 @@ const EditarInquilinoModal = ({ isOpen, onClose, inquilino, onSuccess }) => {
             value={formData.nacionalidad}
             onChange={handleChange}
             error={errors.nacionalidad}
-            placeholder="Ej: Peruana, Colombiana, etc."
           />
 
           <div className="grid grid-cols-2 gap-4">

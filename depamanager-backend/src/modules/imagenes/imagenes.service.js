@@ -1,5 +1,5 @@
 const imagenesRepository = require("./imagenes.repository");
-const auditoriaRepository = require("../accesos/auditoria.repository");
+const auditoriaRepository = require("../auditoria/auditoria.repository");
 const fs = require('fs').promises;
 const path = require('path');
 

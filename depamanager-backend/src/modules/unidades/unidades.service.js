@@ -1,5 +1,5 @@
 const unidadesRepository = require("./unidades.repository");
-const auditoriaRepository = require("../accesos/auditoria.repository");
+const auditoriaRepository = require("../auditoria/auditoria.repository");
 const planLimitsUtil = require("../../shared/utils/planLimits.util");
 
 /**

@@ -1,7 +1,8 @@
+// src/routes/PrivateRoute.jsx
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../shared/hooks/useAuth';
 
-const PrivateRoute = ({ children, requiredRole }) => {
+const PrivateRoute = ({ children, requiredRole, allowedRoles }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
@@ -16,18 +17,30 @@ const PrivateRoute = ({ children, requiredRole }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Si se requiere un rol específico y el usuario no lo tiene
+  // Obtener el rol del usuario
+  const rolValue = typeof user?.rol === 'object' ? user?.rol?.nombre : user?.rol;
+  const userRole = rolValue?.toUpperCase();
+
+  // Verificar roles permitidos (array)
+  if (allowedRoles && allowedRoles.length > 0) {
+    const normalizedAllowedRoles = allowedRoles.map(r => r.toUpperCase());
+    if (!normalizedAllowedRoles.includes(userRole)) {
+      console.warn(`❌ Acceso denegado: Usuario tiene rol ${userRole} pero se requiere uno de: ${normalizedAllowedRoles.join(', ')}`);
+      return <Navigate to="/dashboard" replace />;
+    }
+    return children;
+  }
+
+  // Verificar rol requerido (string único)
   if (requiredRole) {
-    // Si el rol es objeto, obtener la propiedad nombre
-    const rolValue = typeof user?.rol === 'object' ? user?.rol?.nombre : user?.rol;
-    const userRole = rolValue?.toUpperCase();
-    
     if (userRole !== requiredRole.toUpperCase()) {
       console.warn(`❌ Acceso denegado: Usuario tiene rol ${userRole} pero se requiere ${requiredRole}`);
       return <Navigate to="/dashboard" replace />;
     }
+    return children;
   }
 
+  // Si no hay restricción de rol, cualquier usuario autenticado puede acceder
   return children;
 };
 

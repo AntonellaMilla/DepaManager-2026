@@ -11,7 +11,7 @@
  * 
  * src/pages/administradores/
  * ├── AdministradoresPage.jsx           ← Página principal (CRUD)
- * ├── CrearAdministradorModal.jsx       ← Modal para crear (siguiendo patrón Edificios)
+ * ├── CrearAdministradorPage.jsx       ← Modal para crear (siguiendo patrón Edificios)
  * ├── EditarAdministradorModal.jsx      ← Modal para editar (siguiendo patrón Edificios)
  * └── README.md                         ← Este archivo
  * 
@@ -23,7 +23,7 @@
  * 
  * ================== CAMBIOS EN MODALES ==================
  * 
- * ✅ CrearAdministradorModal.jsx MEJORADO:
+ * ✅ CrearAdministradorPage.jsx MEJORADO:
  *    - Ahora usa componente Modal.jsx (consistente con EditarEdificioModal)
  *    - Footer con botones profesionales (Cancelar | Crear Administrador)
  *    - Error global en la parte superior (igual que Edificios)
@@ -73,9 +73,9 @@
  * ================== USO DE MODALES ==================
  * 
  * 1. CREAR ADMINISTRADOR:
- *    import CrearAdministradorModal from './CrearAdministradorModal';
+ *    import CrearAdministradorPage from './CrearAdministradorPage';
  *    
- *    <CrearAdministradorModal
+ *    <CrearAdministradorPage
  *      isOpen={crearModal}
  *      onClose={() => setCrearModal(false)}
  *      onSuccess={() => {

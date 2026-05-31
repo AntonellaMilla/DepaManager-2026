@@ -12,19 +12,37 @@ const AsignarAdminModal = ({ isOpen, onClose, edificio, onSuccess }) => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
+  const [edificios, setEdificios] = useState([]);
+
   // Cargar administradores al abrir modal
-  useEffect(() => {
-    if (isOpen) {
-      fetchAdmins();
-      setSelectedAdmin('');
-      setErrors({});
+useEffect(() => {
+  if (!isOpen) return;
+
+  const loadData = async () => {
+    try {
+      const [adminsRes, edificiosRes] = await Promise.all([
+        administradoresService.listarAdministradores(),
+        edificiosService.getAll()
+      ]);
+
+      const adminsData = adminsRes?.data?.data || adminsRes?.data || adminsRes || [];
+      const edificiosData = edificiosRes?.data?.data || edificiosRes?.data || [];
+
+      setAdmins(adminsData);
+      setEdificios(edificiosData);
+
+    } catch (error) {
+      toast.error('Error al cargar datos');
     }
-  }, [isOpen]);
+  };
+
+  loadData();
+}, [isOpen]);
 
   const fetchAdmins = async () => {
     try {
       const response = await administradoresService.listarAdministradores();
-      const data = Array.isArray(response) ? response : response.data || [];
+      const data = response?.data?.data || response?.data || response || [];
       setAdmins(data);
     } catch (error) {
       toast.error('Error al cargar administradores');
@@ -33,9 +51,20 @@ const AsignarAdminModal = ({ isOpen, onClose, edificio, onSuccess }) => {
   };
 
   const currentAdmin = edificio?.administradores?.[0];
-  const availableAdmins = admins.filter(a => 
-    !currentAdmin || a.id !== currentAdmin.usuario?.id
-  );
+
+const adminsOcupados = new Set(
+  edificios
+    .flatMap(e => e.administradores || [])
+    .map(a => a.usuarioId)
+);
+
+const availableAdmins = admins.filter(admin => {
+  const id = admin.id || admin.usuario?.id;
+  return !adminsOcupados.has(id);
+});
+
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();

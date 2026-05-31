@@ -76,7 +76,7 @@ const vehiculosRepository = {
   },
 
   /**
-   * Buscar vehículo por ID incluyendo edificio asociado
+   * Buscar vehículo por ID incluyendo edificio asociado y usuario del inquilino
    */
   async findById(id) {
     return await prisma.vehiculo.findUnique({
@@ -84,6 +84,16 @@ const vehiculosRepository = {
       include: {
         inquilino: {
           include: {
+            usuario: {
+              select: {
+                id: true,
+                nombres: true,
+                apellidos: true,
+                email: true,
+                dni: true,
+                telefono: true
+              }
+            },
             unidad: {
               include: {
                 edificio: true

@@ -1,7 +1,7 @@
 const edificiosRepository = require("./edificios.repository");
-const administradoresRepository = require("./administradores.repository");
+const administradoresRepository = require("../administradores/administradores.repository");
 const usuariosRepository = require("../usuarios/usuarios.repository");
-const auditoriaRepository = require("../accesos/auditoria.repository");
+const auditoriaRepository = require("../auditoria/auditoria.repository");
 const planesRepository = require("./planes.repository");
 const pagosService = require("../pagos/pagos.service");
 
@@ -50,21 +50,43 @@ const edificiosService = {
   },
 
   /**
-   * Ver accesos globales de todos los edificios del propietario
+   * Ver accesos globales
+   * - PROPIETARIO: accesos de todos sus edificios
+   * - ADMINISTRADOR: accesos de su edificio asignado
    */
-  async verAccesosGlobales(propietarioId) {
-    const edificios = await edificiosRepository.findByPropietarioId(propietarioId);
-    const edificioIds = edificios.map(e => e.id);
+  async verAccesosGlobales(usuario) {
+    let edificioIds;
+
+    if (usuario.rol === 'PROPIETARIO') {
+      const edificios = await edificiosRepository.findByPropietarioId(usuario.id);
+      edificioIds = edificios.map(e => e.id);
+    } else if (usuario.rol === 'ADMINISTRADOR') {
+      // ADMINISTRADOR: solo su edificio asignado
+      edificioIds = usuario.edificiosIds || (usuario.edificioId ? [usuario.edificioId] : []);
+    } else {
+      return [];
+    }
 
     return await auditoriaRepository.findAccesosByEdificios(edificioIds);
   },
 
   /**
    * Ver alertas globales
+   * - PROPIETARIO: alertas de todos sus edificios
+   * - ADMINISTRADOR: alertas de su edificio asignado
    */
-  async verAlertasGlobales(propietarioId) {
-    const edificios = await edificiosRepository.findByPropietarioId(propietarioId);
-    const edificioIds = edificios.map(e => e.id);
+  async verAlertasGlobales(usuario) {
+    let edificioIds;
+
+    if (usuario.rol === 'PROPIETARIO') {
+      const edificios = await edificiosRepository.findByPropietarioId(usuario.id);
+      edificioIds = edificios.map(e => e.id);
+    } else if (usuario.rol === 'ADMINISTRADOR') {
+      // ADMINISTRADOR: solo su edificio asignado
+      edificioIds = usuario.edificiosIds || (usuario.edificioId ? [usuario.edificioId] : []);
+    } else {
+      return [];
+    }
 
     return await auditoriaRepository.findAlertasByEdificios(edificioIds);
   },
@@ -109,11 +131,27 @@ const edificiosService = {
   /**
    * Ver accesos de un edificio específico (filtrado por edificio)
    * Similar a verAccesosGlobales pero para un solo edificio
+   * - PROPIETARIO: puede ver cualquier edificio que le pertenezca
+   * - ADMINISTRADOR: solo puede ver su edificio asignado
    */
-  async verAccesosPorEdificio(edificioId, propietarioId, filtros = {}) {
+  async verAccesosPorEdificio(edificioId, usuario, filtros = {}) {
     const edificio = await edificiosRepository.findById(edificioId);
-    if (!edificio || edificio.propietarioId !== propietarioId) {
-      throw new Error('No tienes permiso para ver este edificio');
+    if (!edificio) {
+      throw new Error('Edificio no encontrado');
+    }
+
+    // Validar permisos según rol
+    if (usuario.rol === 'PROPIETARIO') {
+      if (edificio.propietarioId !== usuario.id) {
+        throw new Error('No tienes permiso para ver este edificio');
+      }
+    } else if (usuario.rol === 'ADMINISTRADOR') {
+      const edificiosIds = usuario.edificiosIds || (usuario.edificioId ? [usuario.edificioId] : []);
+      if (!edificiosIds.includes(edificioId)) {
+        throw new Error('No tienes permiso para ver este edificio');
+      }
+    } else {
+      throw new Error('No tienes permiso para ver accesos');
     }
 
     return await auditoriaRepository.findAccesosByEdificios([edificioId]);
@@ -122,11 +160,27 @@ const edificiosService = {
   /**
    * Ver alertas de un edificio específico (filtrado por edificio)
    * Similar a verAlertasGlobales pero para un solo edificio
+   * - PROPIETARIO: puede ver cualquier edificio que le pertenezca
+   * - ADMINISTRADOR: solo puede ver su edificio asignado
    */
-  async verAlertasPorEdificio(edificioId, propietarioId) {
+  async verAlertasPorEdificio(edificioId, usuario) {
     const edificio = await edificiosRepository.findById(edificioId);
-    if (!edificio || edificio.propietarioId !== propietarioId) {
-      throw new Error('No tienes permiso para ver este edificio');
+    if (!edificio) {
+      throw new Error('Edificio no encontrado');
+    }
+
+    // Validar permisos según rol
+    if (usuario.rol === 'PROPIETARIO') {
+      if (edificio.propietarioId !== usuario.id) {
+        throw new Error('No tienes permiso para ver este edificio');
+      }
+    } else if (usuario.rol === 'ADMINISTRADOR') {
+      const edificiosIds = usuario.edificiosIds || (usuario.edificioId ? [usuario.edificioId] : []);
+      if (!edificiosIds.includes(edificioId)) {
+        throw new Error('No tienes permiso para ver este edificio');
+      }
+    } else {
+      throw new Error('No tienes permiso para ver alertas');
     }
 
     return await auditoriaRepository.findAlertasByEdificios([edificioId]);

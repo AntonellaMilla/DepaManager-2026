@@ -1,42 +1,98 @@
+// src/modules/unidades/services/unidadesService.js
 import api from '../../../shared/services/api';
+
+const BASE_URL = '/unidades';
 
 export const unidadesService = {
 
-  // 📥 Obtener todas las unidades
-  getAll: async () => {
-    const response = await api.get('/unidades');
-    return response.data?.data || response.data;
+  /**
+   * Listar todas las unidades del edificio del administrador
+   * GET /api/unidades
+   */
+  listarUnidades: async () => {
+    try {
+      const response = await api.get(BASE_URL);
+      return response.data?.data || response.data || [];
+    } catch (error) {
+      console.error('❌ Error en listarUnidades:', error);
+      throw error;
+    }
   },
 
-  // 📥 Obtener una unidad por ID (útil para editar)
-  getById: async (id) => {
-    const response = await api.get(`/unidades/${id}`);
-    return response.data?.data || response.data;
+  /**
+   * Obtener una unidad por ID
+   * Nota: El backend no tiene endpoint específico, se filtra del listado
+   */
+  obtenerUnidad: async (id, unidadesList) => {
+    return unidadesList?.find(u => u.id === id) || null;
   },
 
-  // ➕ Crear unidad
-  create: async (data) => {
-    const response = await api.post('/unidades', data);
-    return response.data;
+  /**
+   * Crear una nueva unidad (individual)
+   * POST /api/unidades
+   */
+  crearUnidad: async (unidadData) => {
+    try {
+      const response = await api.post(BASE_URL, unidadData);
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error('❌ Error en crearUnidad:', error);
+      throw error;
+    }
   },
 
-  // 🔄 Actualizar unidad
-  update: async (id, data) => {
-    const response = await api.put(`/unidades/${id}`, data);
-    return response.data;
+  /**
+   * Crear múltiples unidades (por rango)
+   * POST /api/unidades (con desde, hasta, piso)
+   */
+  crearUnidadesPorRango: async (desde, hasta, piso, capacidadMaxima = 2) => {
+    try {
+      const response = await api.post(BASE_URL, {
+        desde,
+        hasta,
+        piso,
+        capacidadMaxima
+      });
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error('❌ Error en crearUnidadesPorRango:', error);
+      throw error;
+    }
   },
 
-  // ❌ Eliminar (o desactivar) unidad
-  delete: async (id) => {
-    const response = await api.delete(`/unidades/${id}`);
-    return response.data;
+  /**
+   * Actualizar una unidad
+   * PUT /api/unidades/:id
+   */
+  actualizarUnidad: async (id, unidadData) => {
+    try {
+      const response = await api.put(`${BASE_URL}/${id}`, unidadData);
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error('❌ Error en actualizarUnidad:', error);
+      throw error;
+    }
   },
 
-  // ⚡ Crear unidades por rango (según tu backend)
-  createRango: async (data) => {
-    // Ejemplo data:
-    // { desde: 101, hasta: 105, piso: 1, capacidadMaxima: 2 }
-    const response = await api.post('/unidades/rango', data);
-    return response.data;
-  }
+  /**
+   * Eliminar (desactivar) una unidad
+   * DELETE /api/unidades/:id
+   */
+  eliminarUnidad: async (id) => {
+    try {
+      const response = await api.delete(`${BASE_URL}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error en eliminarUnidad:', error);
+      throw error;
+    }
+  },
+
+  // Alias para compatibilidad
+  getAll: async () => unidadesService.listarUnidades(),
+  create: async (data) => unidadesService.crearUnidad(data),
+  update: async (id, data) => unidadesService.actualizarUnidad(id, data),
+  delete: async (id) => unidadesService.eliminarUnidad(id)
 };
+
+export default unidadesService;

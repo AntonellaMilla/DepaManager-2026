@@ -126,7 +126,12 @@ const inquilinosController = {
    */
   async listar(req, res) {
     try {
-      const inquilinos = await inquilinosService.listarInquilinos(req.user.edificioId);
+      // Usar edificiosIds o edificioId del usuario
+      const edificioId = req.user.edificiosIds?.[0] || req.user.edificioId;
+      if (!edificioId) {
+        return error(res, 'No se encontró edificioId para el administrador', 400);
+      }
+      const inquilinos = await inquilinosService.listarInquilinos(edificioId);
       return success(res, inquilinos, 'Inquilinos listados correctamente');
     } catch (err) {
       return error(res, err.message);

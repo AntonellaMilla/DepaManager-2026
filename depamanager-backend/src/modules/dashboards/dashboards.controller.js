@@ -22,6 +22,21 @@ const dashboardController = {
     }
   },
 
+async getDashboardInquilino(req, res) {
+  try {
+    const usuarioId = req.user.id;
+
+    const dashboard = await dashboardService.getDashboardInquilino(usuarioId);
+
+    return success(res, dashboard, 'Dashboard inquilino cargado correctamente');
+  } catch (err) {
+    return error(res, err.message, 500);
+  }
+},
+
+
+
+
   /**
    * GET /api/dashboard/administrador/:edificioId
    * Dashboard del administrador para un edificio específico

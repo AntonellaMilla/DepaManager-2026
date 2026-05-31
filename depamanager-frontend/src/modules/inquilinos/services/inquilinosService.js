@@ -1,52 +1,119 @@
+// src/modules/inquilinos/services/inquilinosService.js
 import api from '../../../shared/services/api';
 
+const BASE_URL = '/inquilinos';
+const USUARIOS_URL = '/usuarios';
+
 export const inquilinosService = {
+
+  // ==================== USUARIOS INQUILINOS ====================
+  
   /**
-   * Listar inquilinos del edificio del administrador
+   * Listar usuarios con rol INQUILINO (creados previamente)
+   * GET /api/usuarios/inquilinos-usuarios
    */
-  getAll: async () => {
-    const response = await api.get('/inquilinos');
-    return response.data;
+  listarUsuariosInquilinos: async () => {
+    try {
+      const response = await api.get(`${USUARIOS_URL}/inquilinos-usuarios`);
+      return response.data?.data || response.data || [];
+    } catch (error) {
+      console.error('❌ Error en listarUsuariosInquilinos:', error);
+      throw error;
+    }
   },
 
   /**
-   * FLUJO COMPLETO: Crear inquilino con datos personales
-   * El sistema crea automáticamente el usuario con rol INQUILINO
+   * Crear un nuevo usuario con rol INQUILINO
+   * POST /api/usuarios/inquilino-usuario
    */
-  createCompleto: async (datosInquilino) => {
-    const response = await api.post('/inquilinos/registro', datosInquilino);
-    return response.data;
+  CrearInquilinoPage: async (datos) => {
+    try {
+      const response = await api.post(`${USUARIOS_URL}/inquilino-usuario`, datos);
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error('❌ Error en CrearInquilinoPage:', error);
+      throw error;
+    }
   },
 
+  // ==================== INQUILINOS (ASIGNACIÓN) ====================
+
   /**
-   * Crear inquilino con usuario ya existente
+   * Asignar un usuario inquilino a una unidad (crear registro Inquilino)
+   * POST /api/inquilinos
    */
-  create: async (inquilinoData) => {
-    const response = await api.post('/inquilinos', inquilinoData);
-    return response.data;
+  asignarInquilino: async (datos) => {
+    try {
+      const response = await api.post(BASE_URL, datos);
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error('❌ Error en asignarInquilino:', error);
+      throw error;
+    }
+  },
+
+
+  /**
+   * Listar todos los inquilinos del edificio (con relaciones)
+   * GET /api/inquilinos
+   */
+  listarInquilinos: async () => {
+    try {
+      const response = await api.get(BASE_URL);
+      return response.data?.data || response.data || [];
+    } catch (error) {
+      console.error('❌ Error en listarInquilinos:', error);
+      throw error;
+    }
   },
 
   /**
    * Obtener detalles de un inquilino específico
+   * GET /api/inquilinos/:id
    */
-  getById: async (id) => {
-    const response = await api.get(`/inquilinos/${id}`);
-    return response.data;
+  obtenerInquilino: async (id) => {
+    try {
+      const response = await api.get(`${BASE_URL}/${id}`);
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error('❌ Error en obtenerInquilino:', error);
+      throw error;
+    }
   },
 
   /**
-   * Actualizar datos del inquilino
+   * Actualizar datos del inquilino (contrato, contacto emergencia)
+   * PUT /api/inquilinos/:id
    */
-  update: async (id, inquilinoData) => {
-    const response = await api.put(`/inquilinos/${id}`, inquilinoData);
-    return response.data;
+  actualizarInquilino: async (id, data) => {
+    try {
+      const response = await api.put(`${BASE_URL}/${id}`, data);
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error('❌ Error en actualizarInquilino:', error);
+      throw error;
+    }
   },
 
   /**
-   * Finalizar contrato de inquilino
+   * Finalizar contrato
+   * PUT /api/inquilinos/:id/finalizar
    */
   finalizarContrato: async (id) => {
-    const response = await api.put(`/inquilinos/${id}/finalizar`);
-    return response.data;
-  }
+    try {
+      const response = await api.put(`${BASE_URL}/${id}/finalizar`);
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error('❌ Error en finalizarContrato:', error);
+      throw error;
+    }
+  },
+
+  // Alias para compatibilidad
+  getAll: async () => inquilinosService.listarInquilinos(),
+  getById: async (id) => inquilinosService.obtenerInquilino(id),
+  update: async (id, data) => inquilinosService.actualizarInquilino(id, data),
+  delete: async (id) => inquilinosService.finalizarContrato(id)
 };
+
+export default inquilinosService;

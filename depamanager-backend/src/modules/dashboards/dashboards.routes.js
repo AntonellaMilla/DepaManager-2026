@@ -8,6 +8,13 @@ const router = express.Router();
 // Todas las rutas requieren autenticación
 router.use(authMiddleware);
 
+
+
+router.get('/inquilino',
+  roleGuard(['INQUILINO']),
+  dashboardController.getDashboardInquilino
+);
+
 // Dashboard del propietario
 router.get('/propietario',
   roleGuard(['PROPIETARIO']),

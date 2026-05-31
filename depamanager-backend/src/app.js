@@ -19,6 +19,8 @@ const pagosRoutes = require('./modules/pagos/pagos.routes');
 const reportesRoutes = require('./modules/reportes/reportes.routes');
 const metricasRoutes = require('./modules/metricas/metricas.routes');
 const backupRoutes = require('./modules/backup/backup.routes');
+const auditoriaRoutes = require('./modules/auditoria/auditoria.routes');
+const administradoresRoutes = require('./modules/administradores/administradores.routes');
 
 const app = express();
 
@@ -31,6 +33,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 
 // Rutas protegidas
+app.use('/api/auditoria', auditoriaRoutes);
 app.use('/api/edificios', edificiosRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/unidades', unidadesRoutes);
@@ -45,7 +48,7 @@ app.use('/api/pagos', pagosRoutes);
 app.use('/api/reportes', reportesRoutes);
 app.use('/api/metricas', metricasRoutes);
 app.use('/api/backup', backupRoutes);
-
+app.use('/api/administradores', administradoresRoutes);
 // Health check
 app.get('/health', (req, res) => {
   res.json({ success: true, message: '✅ Backend funcionando correctamente' });
