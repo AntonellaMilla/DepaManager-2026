@@ -257,22 +257,35 @@ const HistorialAccesosPage = () => {
       header: 'Confianza',
       key: 'confianza',
       render: (_, row) => {
-        const nivel = row.nivelConfianza ? Math.round(row.nivelConfianza * 100) : null;
+        // Si el valor es mayor a 1, asumir que ya está en rango 1-100
+        // Si es menor o igual a 1, asumir que es decimal (0-1) y multiplicar por 100
+        const nivel = row.nivelConfianza ? 
+          (row.nivelConfianza > 1 ? Math.round(row.nivelConfianza) : Math.round(row.nivelConfianza * 100)) : null;
         const getColor = () => {
           if (!nivel) return 'text-gray-400';
-          if (nivel >= 80) return 'text-green-600';
+          if (nivel >= 90) return 'text-green-600';
+          if (nivel >= 70) return 'text-emerald-600';
           if (nivel >= 50) return 'text-yellow-600';
+          if (nivel >= 25) return 'text-orange-600';
           return 'text-red-600';
+        };
+        const getBarColor = () => {
+          if (!nivel) return 'bg-gray-300';
+          if (nivel >= 90) return 'bg-green-500';
+          if (nivel >= 70) return 'bg-emerald-500';
+          if (nivel >= 50) return 'bg-yellow-500';
+          if (nivel >= 25) return 'bg-orange-500';
+          return 'bg-red-500';
         };
         return nivel ? (
           <div className="flex items-center gap-1.5">
             <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className={`h-full rounded-full ${nivel >= 80 ? 'bg-green-500' : nivel >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                style={{ width: `${nivel}%` }}
+              <div
+                className={`h-full rounded-full ${getBarColor()}`}
+                style={{ width: `${Math.min(nivel, 100)}%` }}
               />
             </div>
-            <span className={`text-xs font-medium ${getColor()}`}>{nivel}%</span>
+            <span className={`text-xs font-medium ${getColor()}`}>{Math.min(nivel, 100)}%</span>
           </div>
         ) : <span className="text-gray-400 text-xs">-</span>;
       }
@@ -537,17 +550,25 @@ const HistorialAccesosPage = () => {
                     <div className="mt-2">
                       <div className="flex items-center gap-3">
                         <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
+                          <div
                             className={`h-full rounded-full ${
-                              detalles.nivelConfianza >= 0.8 ? 'bg-green-500' : 
-                              detalles.nivelConfianza >= 0.5 ? 'bg-yellow-500' : 'bg-red-500'
+                              detalles.nivelConfianza >= 90 ? 'bg-green-500' :
+                              detalles.nivelConfianza >= 70 ? 'bg-emerald-500' :
+                              detalles.nivelConfianza >= 50 ? 'bg-yellow-500' :
+                              detalles.nivelConfianza >= 25 ? 'bg-orange-500' : 'bg-red-500'
                             }`}
-                            style={{ width: `${Math.round(detalles.nivelConfianza * 100)}%` }}
+                            style={{ width: `${Math.min(Math.round(detalles.nivelConfianza > 1 ? detalles.nivelConfianza : detalles.nivelConfianza * 100), 100)}%` }}
                           />
                         </div>
                         <span className="text-lg font-bold text-gray-800">
-                          {Math.round(detalles.nivelConfianza * 100)}%
+                          {Math.min(Math.round(detalles.nivelConfianza > 1 ? detalles.nivelConfianza : detalles.nivelConfianza * 100), 100)}%
                         </span>
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500">
+                        {Math.round(detalles.nivelConfianza > 1 ? detalles.nivelConfianza : detalles.nivelConfianza * 100) >= 90 ? 'Excelente' :
+                         Math.round(detalles.nivelConfianza > 1 ? detalles.nivelConfianza : detalles.nivelConfianza * 100) >= 70 ? 'Bueno' :
+                         Math.round(detalles.nivelConfianza > 1 ? detalles.nivelConfianza : detalles.nivelConfianza * 100) >= 50 ? 'Regular' :
+                         Math.round(detalles.nivelConfianza > 1 ? detalles.nivelConfianza : detalles.nivelConfianza * 100) >= 25 ? 'Bajo' : 'Muy bajo'}
                       </div>
                     </div>
                   ) : (

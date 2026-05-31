@@ -164,13 +164,7 @@ const VerUnidadPage = () => {
                     <span className="text-gray-800 font-medium">{unidad.capacidadMaxima} personas</span>
                   </p>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">Ocupantes Actuales</p>
-                  <p className="flex items-center gap-2 mt-1">
-                    <Users size={16} className="text-gray-400" />
-                    <span className="text-gray-800 font-medium">{unidad.ocupantesActuales || 0} personas</span>
-                  </p>
-                </div>
+           
               </div>
               {unidad.edificio && (
                 <div>

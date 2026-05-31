@@ -115,7 +115,67 @@ const VehiculosPage = () => {
     }
   };
 
-  const columns = [
+  const columns = userRole === 'INQUILINO' ? [
+    {
+      header: 'Vehículo',
+      key: 'vehiculo',
+      render: (_, row) => (
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/vehiculos/${row.id}`)}>
+          <div 
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold text-sm shadow-sm"
+            style={{ backgroundColor: roleColors.dark }}
+          >
+            {row.placa?.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-gray-800">{row.placa}</p>
+              <span className="flex items-center gap-1 text-xs text-gray-500">
+                {getTipoIcon(row.tipo)}
+                {row.tipo === 'AUTO' ? 'Auto' : row.tipo === 'MOTO' ? 'Moto' : row.tipo}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500">{row.modelo} - {row.color}</p>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: 'Propietario',
+      key: 'propietario',
+      render: (_, row) => {
+        const inquilino = row.inquilino;
+        if (!inquilino) return <span className="text-gray-400">-</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center">
+              <span className="text-xs font-bold text-teal-700">
+                {inquilino.usuario?.nombres?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-800">
+                {inquilino.usuario?.nombres} {inquilino.usuario?.apellidos}
+              </p>
+              <p className="text-xs text-gray-400">Unidad {inquilino.unidad?.numero}</p>
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      header: 'Estado',
+      key: 'activo',
+      render: (value) => (
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+          value ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+        }`}>
+          {value ? <CheckCircle size={12} /> : <XCircle size={12} />}
+          {value ? 'Activo' : 'Inactivo'}
+        </span>
+      )
+    }
+  ] : [
     {
       header: 'Vehículo',
       key: 'vehiculo',
@@ -179,41 +239,26 @@ const VehiculosPage = () => {
       header: 'Acciones',
       key: 'acciones',
       align: 'center',
-      render: (_, row) => {
-          if (userRole === 'INQUILINO') {
-            return (
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon={Eye}
-                  onClick={() => navigate(`/vehiculos/${row.id}`)}
-                  title="Ver detalles"
-                />
-              </div>
-            );
-          }
-          return (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={Eye}
-                onClick={() => navigate(`/vehiculos/${row.id}`)}
-                title="Ver detalles"
-              />
+      render: (_, row) => (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={Eye}
+            onClick={() => navigate(`/vehiculos/${row.id}`)}
+            title="Ver detalles"
+          />
 
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={Trash2}
-                onClick={() => setDeleteModal({ isOpen: true, id: row.id, placa: row.placa })}
-                title="Eliminar"
-                className="text-red-500 hover:text-red-700 hover:bg-red-50"
-              />
-            </div>
-          );
-        }
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={Trash2}
+            onClick={() => setDeleteModal({ isOpen: true, id: row.id, placa: row.placa })}
+            title="Eliminar"
+            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+          />
+        </div>
+      )
     }
   ];
 

@@ -32,7 +32,8 @@ async getDashboardInquilino(usuarioId) {
   return {
     estadisticas: {
       vehiculos: vehiculos.length,
-      unidad: inquilino.unidad.numero
+      unidad: inquilino.unidad.numero,
+      contratoActivo: inquilino.estadoContrato === 'ACTIVO'
     },
     ultimosAccesos: accesos,
     alertasRecientes: []
@@ -100,12 +101,12 @@ async getDashboardInquilino(usuarioId) {
           }
         }),
 
-        // Accesos de las últimas 24 horas
+        // Accesos de las últimas 7 días
         prisma.historialAcceso.findMany({
           where: {
             edificioId: { in: edificioIds },
             fechaEvento: {
-              gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
+              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
             }
           },
           include: {
