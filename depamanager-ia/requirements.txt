@@ -1,8 +1,6 @@
 opencv-python
 easyocr
 ultralytics
-torch
-torchvision
 numpy
 requests
 python-dotenv
