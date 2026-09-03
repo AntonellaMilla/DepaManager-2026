@@ -226,11 +226,3 @@ El proyecto integra desarrollo web, gestión de bases de datos, autenticación, 
 
 ---
 
-## 👩🏻‍💻 Autora
-
-**Antonella Milla Aguirre**
-
-🎓 Diseño y Desarrollo de Software — TECSUP
-💻 Desarrolladora Frontend / Backend Junior
-
-[LinkedIn](https://www.linkedin.com/in/antonella-blanca-milla-aguirre-754134368/) · [GitHub](https://github.com/AntonellaMilla)
